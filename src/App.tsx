@@ -1,4 +1,5 @@
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import {
   AlertTriangle,
   ArrowRight,
@@ -1270,6 +1271,7 @@ export default function App() {
   return (
     <AudioPlayerProvider>
       <KrishiAppContent />
+      <Analytics />
     </AudioPlayerProvider>
   );
 }
