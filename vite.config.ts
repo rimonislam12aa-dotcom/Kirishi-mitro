@@ -2,8 +2,11 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import fs from 'fs';
 import path from 'path';
-import {defineConfig} from 'vite';
-import {VitePWA} from 'vite-plugin-pwa';
+import { fileURLToPath } from 'url';
+import { defineConfig } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
+
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
 function normalizeBase(rawBase?: string): string {
   const value = rawBase?.trim();
@@ -36,7 +39,7 @@ export default defineConfig(() => {
             assetsInlineLimit: 100000000,
             rolldownOptions: {
               output: {
-                inlineDynamicImports: true,
+                codeSplitting: false,
               },
             },
           }
@@ -239,7 +242,7 @@ export default defineConfig(() => {
           if (error) {
             return;
           }
-          const targetOutDir = path.resolve(__dirname, outDir);
+          const targetOutDir = path.resolve(currentDir, outDir);
 
           if (isSingleFile && fs.existsSync(targetOutDir)) {
             const htmlPath = path.resolve(targetOutDir, 'index.html');
@@ -278,7 +281,7 @@ export default defineConfig(() => {
             return;
           }
 
-          const srcAssets = path.resolve(__dirname, 'src/assets');
+          const srcAssets = path.resolve(currentDir, 'src/assets');
           const destAssets = path.resolve(targetOutDir, 'src/assets');
           if (fs.existsSync(targetOutDir) && fs.existsSync(srcAssets)) {
             fs.cpSync(srcAssets, destAssets, {recursive: true, force: true});
@@ -291,7 +294,7 @@ export default defineConfig(() => {
     ],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(currentDir, '.'),
       },
     },
     server: {
