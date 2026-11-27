@@ -1,0 +1,6 @@
+{
+  "name": "Krishi Mitra — কৃষি মিত্র",
+  "description": "Offline-first smart agriculture app with GPS weather push alerts, camera crop disease detection, local market prices, crop care tips, audio readout, and farmer feedback in local languages.",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
