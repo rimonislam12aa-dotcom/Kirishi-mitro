@@ -9,6 +9,7 @@ interface VisitorStore {
   uniqueVisitorIds: string[];
   dailyVisits: Record<string, number>;
   dailyUniqueVisitors: Record<string, string[]>;
+  recentEventIds?: string[];
   lastVisitAt: string;
 }
 
@@ -39,12 +40,20 @@ async function parseJsonBody(req: JsonReq): Promise<Record<string, unknown>> {
 }
 
 export default async function handler(req: JsonReq, res: ServerResponse) {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204;
+    res.end();
+    return;
+  }
+
   const todayKey = new Date().toISOString().slice(0, 10);
   let store: VisitorStore = {
     totalVisits: 0,
     uniqueVisitorIds: [],
     dailyVisits: { [todayKey]: 0 },
     dailyUniqueVisitors: { [todayKey]: [] },
+    recentEventIds: [],
     lastVisitAt: new Date().toISOString(),
   };
 
@@ -61,6 +70,9 @@ export default async function handler(req: JsonReq, res: ServerResponse) {
           parsed.dailyUniqueVisitors && typeof parsed.dailyUniqueVisitors === 'object'
             ? parsed.dailyUniqueVisitors
             : {},
+        recentEventIds: Array.isArray(parsed.recentEventIds)
+          ? parsed.recentEventIds.filter((x): x is string => typeof x === 'string').slice(-1000)
+          : [],
         lastVisitAt: typeof parsed.lastVisitAt === 'string' ? parsed.lastVisitAt : new Date().toISOString(),
       };
     }
@@ -77,14 +89,28 @@ export default async function handler(req: JsonReq, res: ServerResponse) {
     typeof body.visitorId === 'string'
       ? body.visitorId.trim().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64)
       : '';
+  const sanitizedEventId =
+    typeof body.eventId === 'string'
+      ? body.eventId.trim().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80)
+      : '';
   const countVisit = body.countVisit !== false;
 
   if (countVisit || sanitized.length >= 4) {
     const visitorId = sanitized.length >= 4 ? sanitized : `anon_${Date.now()}`;
-    if (countVisit) {
+    const recentEvents = store.recentEventIds ?? [];
+    const isDuplicateEvent = Boolean(sanitizedEventId && recentEvents.includes(sanitizedEventId));
+
+    if (countVisit && !isDuplicateEvent) {
       store.totalVisits += 1;
       store.dailyVisits[todayKey] = (store.dailyVisits[todayKey] ?? 0) + 1;
       store.lastVisitAt = new Date().toISOString();
+      if (sanitizedEventId) {
+        recentEvents.push(sanitizedEventId);
+        if (recentEvents.length > 1000) {
+          recentEvents.splice(0, recentEvents.length - 1000);
+        }
+        store.recentEventIds = recentEvents;
+      }
     }
 
     if (!store.uniqueVisitorIds.includes(visitorId)) {

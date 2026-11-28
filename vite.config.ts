@@ -61,6 +61,7 @@ export default defineConfig(() => {
                     id.includes('src/catalog/seedData') ||
                     id.includes('src/catalog/agroAdvisoryData') ||
                     id.includes('src/catalog/offlineDiseaseMatcher') ||
+                    id.includes('src/catalog/structuredKnowledgeJson') ||
                     id.includes('src/catalog/i18n')
                   ) {
                     return 'catalog-data';
@@ -150,8 +151,9 @@ export default defineConfig(() => {
           navigateFallback: isRelativeBase ? 'index.html' : `${base}index.html`,
           navigateFallbackDenylist: [
             isRelativeBase ? /\/api\// : new RegExp(`^${escapedBase}api/`),
+            /^\/_vercel\//,
           ],
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,woff,woff2}'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,woff,woff2}', 'data/*.json'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -225,6 +227,10 @@ export default defineConfig(() => {
                   statuses: [0, 200],
                 },
               },
+            },
+            {
+              urlPattern: /^\/_vercel\/.*/i,
+              handler: 'NetworkOnly',
             },
           ],
         },

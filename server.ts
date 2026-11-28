@@ -35,7 +35,9 @@ function safeWriteJson(filePath: string, data: unknown): void {
   if (!filePath.startsWith(DATA_DIR + path.sep)) {
     throw new Error('Invalid storage path');
   }
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+  const tmpPath = `${filePath}.${process.pid}.tmp`;
+  fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
+  fs.renameSync(tmpPath, filePath);
 }
 
 function getGeminiClient(apiVersion?: 'v1' | 'v1beta'): GoogleGenAI {
@@ -165,6 +167,7 @@ interface VisitorStore {
   archivedUniqueCount?: number;
   dailyVisits: Record<string, number>;
   dailyUniqueVisitors: Record<string, string[]>;
+  recentEventIds?: string[];
   lastVisitAt: string;
 }
 
@@ -208,12 +211,19 @@ function normalizeVisitorStore(raw: Partial<VisitorStore> | null | undefined): V
   const rawToday = typeof dailyVisits[todayKey] === 'number' && Number.isFinite(dailyVisits[todayKey]) ? dailyVisits[todayKey] : 0;
   dailyVisits[todayKey] = Math.max(rawToday, dailyUniqueVisitors[todayKey].length);
 
+  const recentEventIds = Array.isArray(raw?.recentEventIds)
+    ? Array.from(
+        new Set(raw.recentEventIds.filter((id): id is string => typeof id === 'string' && id.length > 0))
+      ).slice(-1000)
+    : [];
+
   return {
     totalVisits,
     uniqueVisitorIds,
     archivedUniqueCount,
     dailyVisits,
     dailyUniqueVisitors,
+    recentEventIds,
     lastVisitAt: typeof raw?.lastVisitAt === 'string' ? raw.lastVisitAt : new Date().toISOString(),
   };
 }
@@ -308,6 +318,7 @@ function normalizeStringArray(value: unknown): string[] {
 async function startServer() {
   const app = express();
   app.use(express.json({ limit: '15mb' }));
+  app.use(express.text({ type: 'text/plain', limit: '64kb' }));
 
   app.get('/api/health', (_req, res) => {
     res.json({
@@ -319,16 +330,37 @@ async function startServer() {
 
   // Visitor & View Counter Endpoints (Real-Time Separated Total Views vs Unique Visitors)
   app.get('/api/visitors', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     const raw = safeReadJson<Partial<VisitorStore>>(VISITORS_FILE, {});
     const store = normalizeVisitorStore(raw);
     res.json(buildVisitorPayload(store));
   });
 
   app.post('/api/visitors/hit', (req, res) => {
-    const { visitorId, countVisit = true } = req.body ?? {};
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+
+    let parsedBody: Record<string, unknown> = {};
+    if (typeof req.body === 'string') {
+      try {
+        const parsed = JSON.parse(req.body);
+        if (parsed && typeof parsed === 'object') {
+          parsedBody = parsed as Record<string, unknown>;
+        }
+      } catch {
+        parsedBody = {};
+      }
+    } else if (req.body && typeof req.body === 'object') {
+      parsedBody = req.body as Record<string, unknown>;
+    }
+
+    const { visitorId, countVisit = true, eventId } = parsedBody;
     const sanitized =
       typeof visitorId === 'string'
         ? visitorId.trim().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64)
+        : '';
+    const sanitizedEventId =
+      typeof eventId === 'string'
+        ? eventId.trim().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80)
         : '';
 
     const raw = safeReadJson<Partial<VisitorStore>>(VISITORS_FILE, {});
@@ -341,11 +373,21 @@ async function startServer() {
 
     const safeId = sanitized.length >= 4 ? sanitized : `anon_${Date.now()}`;
     const todayKey = getTodayDateKey();
+    const recentEvents = store.recentEventIds ?? [];
+    const isDuplicateEvent = Boolean(sanitizedEventId && recentEvents.includes(sanitizedEventId));
 
-    if (countVisit) {
+    if (countVisit && !isDuplicateEvent) {
       store.totalVisits += 1;
       store.dailyVisits[todayKey] = (store.dailyVisits[todayKey] ?? 0) + 1;
       store.lastVisitAt = new Date().toISOString();
+
+      if (sanitizedEventId) {
+        recentEvents.push(sanitizedEventId);
+        if (recentEvents.length > 1000) {
+          recentEvents.splice(0, recentEvents.length - 1000);
+        }
+        store.recentEventIds = recentEvents;
+      }
 
       // Keep only the most recent 60 days of daily counters
       const keys = Object.keys(store.dailyVisits).sort();

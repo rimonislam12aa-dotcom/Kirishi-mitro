@@ -64,6 +64,7 @@ export default function handler(_req: IncomingMessage, res: ServerResponse) {
 
   res.statusCode = 200;
   res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.end(
     JSON.stringify({
       totalVisits,

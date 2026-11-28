@@ -67,7 +67,7 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-5d155c7a'], (function (workbox) { 'use strict';
+define(['./workbox-957bde9c'], (function (workbox) { 'use strict';
 
   self.skipWaiting();
   workbox.clientsClaim();
@@ -87,7 +87,7 @@ define(['./workbox-5d155c7a'], (function (workbox) { 'use strict';
     "revision": "49bfbb394f0fe8f80bebcc6a5ef38d8d"
   }, {
     "url": "index.html",
-    "revision": "56f5ac1c3da91a00eda1bb36dfdd0071"
+    "revision": "aed5ad7c73fe3597f2eece5f9a4a120b"
   }, {
     "url": "icon.svg",
     "revision": "6f5862cda0c04b3401bf6aae096cb7dd"
@@ -113,19 +113,19 @@ define(['./workbox-5d155c7a'], (function (workbox) { 'use strict';
     "url": "assets/rolldown-runtime-WkwZ5CU-.js",
     "revision": null
   }, {
-    "url": "assets/react-vendor-BWUbRz9q.js",
+    "url": "assets/react-vendor-C28zv8iy.js",
     "revision": null
   }, {
     "url": "assets/qr-engine-CXHAcuVq.js",
     "revision": null
   }, {
-    "url": "assets/lucide-icons-DUSPKYjF.js",
+    "url": "assets/lucide-icons-D78vOKzP.js",
     "revision": null
   }, {
-    "url": "assets/index-DeI2n79o.js",
+    "url": "assets/index-CLW8QNgQ.css",
     "revision": null
   }, {
-    "url": "assets/index-DFNau4Aq.css",
+    "url": "assets/index-BoX79oTS.js",
     "revision": null
   }, {
     "url": "assets/hero_farmland_dawn_1795261297830-Bl3SH4kv.jpg",
@@ -140,29 +140,35 @@ define(['./workbox-5d155c7a'], (function (workbox) { 'use strict';
     "url": "assets/crop_potato_harvest_1795261297721-BkBA18R6.jpg",
     "revision": null
   }, {
-    "url": "assets/catalog-data-BxKufqXg.js",
+    "url": "assets/catalog-data-BBnO-LOF.js",
     "revision": null
   }, {
-    "url": "assets/VisitorCounter-Dcr9O9Sm.js",
+    "url": "assets/VisitorCounter-DCZQYuG6.js",
     "revision": null
   }, {
-    "url": "assets/OfflineSyncDrawer-VmB5EU9_.js",
+    "url": "assets/OfflineSyncDrawer-CLfkNH1w.js",
     "revision": null
   }, {
-    "url": "assets/MarketPricesSection-y6378e_a.js",
+    "url": "assets/MarketPricesSection-w0-KWcP-.js",
     "revision": null
   }, {
-    "url": "assets/DiseaseScannerSection-DPBb_X4f.js",
+    "url": "assets/KnowledgeBaseSection-CuLPTlka.js",
     "revision": null
   }, {
-    "url": "assets/CropTipsSection-DN60La8G.js",
+    "url": "assets/DiseaseScannerSection-DBbyfsF9.js",
     "revision": null
   }, {
-    "url": "assets/CropCalendarSection-C6uWIaCA.js",
+    "url": "assets/CropTipsSection-BJYYXEJJ.js",
     "revision": null
   }, {
-    "url": "assets/AgroServiceHubSection-DK4apeR-.js",
+    "url": "assets/CropCalendarSection-BzvJRG5-.js",
     "revision": null
+  }, {
+    "url": "assets/AgroServiceHubSection-NIX786TG.js",
+    "revision": null
+  }, {
+    "url": "data/krishi-knowledge-base.json",
+    "revision": "f23e4a4784ca828b61d8f78cad1ec4c5"
   }, {
     "url": "apple-touch-icon.png",
     "revision": "f5cc9cb2ad304274fce00cb1d37e117f"
@@ -184,7 +190,7 @@ define(['./workbox-5d155c7a'], (function (workbox) { 'use strict';
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
-    denylist: [/\/api\//]
+    denylist: [/\/api\//, /^\/_vercel\//]
   }));
   workbox.registerRoute(/^https:\/\/fonts\.googleapis\.com\/.*/i, new workbox.CacheFirst({
     "cacheName": "google-fonts-cache",
@@ -234,5 +240,6 @@ define(['./workbox-5d155c7a'], (function (workbox) { 'use strict';
       statuses: [0, 200]
     })]
   }), 'GET');
+  workbox.registerRoute(/^\/_vercel\/.*/i, new workbox.NetworkOnly(), 'GET');
 
 }));

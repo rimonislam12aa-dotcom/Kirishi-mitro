@@ -270,3 +270,105 @@ export interface FarmerHelplineItem {
   hours: Record<AppLanguage, string>;
   regionNote: Record<AppLanguage, string>;
 }
+
+export type KnowledgeSectionKey =
+  | 'crops'
+  | 'growthStages'
+  | 'careTips'
+  | 'marketPrices'
+  | 'weatherAlerts';
+
+export type AgroCropGroupKey = 'grain' | 'vegetable' | 'spice' | 'pulse_oil_fiber' | 'fruit';
+
+export interface StructuredCropRecord {
+  cropId: string;
+  category: AgroCropGroupKey;
+  seasonKey: 'rabi' | 'kharif1' | 'kharif2' | 'all';
+  cropName: Record<AppLanguage, string>;
+  variety: Record<AppLanguage, string>;
+  seasonLabel: Record<AppLanguage, string>;
+  durationDaysMin: number;
+  durationDaysMax: number;
+  plantingMonths: number[];
+  harvestMonths: number[];
+  plantingWindowText: Record<AppLanguage, string>;
+  harvestWindowText: Record<AppLanguage, string>;
+  soilAndPh: Record<AppLanguage, string>;
+  spacingAndSeedRate: Record<AppLanguage, string>;
+}
+
+export interface StructuredGrowthStageRecord {
+  stageId: string;
+  cropId: string;
+  cropName: Record<AppLanguage, string>;
+  stageOrder: number;
+  dayOffset: number;
+  title: Record<AppLanguage, string>;
+  action: Record<AppLanguage, string>;
+  criticalIrrigationNote?: Record<AppLanguage, string>;
+}
+
+export interface StructuredCareTipRecord {
+  tipId: string;
+  cropId: string;
+  cropKey: CropTip['cropKey'];
+  category: AgroCropGroupKey;
+  seasonKey: CropTip['seasonKey'];
+  cropName: Record<AppLanguage, string>;
+  seasonLabel: Record<AppLanguage, string>;
+  title: Record<AppLanguage, string>;
+  summary: Record<AppLanguage, string>;
+  steps: Record<AppLanguage, string[]>;
+  fertilizerNote: Record<AppLanguage, string>;
+}
+
+export interface StructuredMarketPriceRecord {
+  priceId: string;
+  cropId: string;
+  category: MarketPrice['category'];
+  cropName: Record<AppLanguage, string>;
+  marketName: string;
+  district: string;
+  pricePerKg: number;
+  pricePerMaund: number;
+  previousPricePerKg: number;
+  trend: MarketPrice['trend'];
+  currency: MarketPrice['currency'];
+  updatedAt: string;
+}
+
+export interface StructuredWeatherAlertRecord {
+  alertId: string;
+  level: WeatherAlert['level'];
+  category: 'storm' | 'rain_flood' | 'disease_humidity' | 'heat_stress' | 'cold_fog' | 'wind_spray' | 'air_quality';
+  triggerCondition: Record<AppLanguage, string>;
+  title: Record<AppLanguage, string>;
+  message: Record<AppLanguage, string>;
+  advice: Record<AppLanguage, string>;
+  affectedCrops: Record<AppLanguage, string[]>;
+  isActiveNow: boolean;
+  triggeredAt: string | null;
+}
+
+export interface KrishiKnowledgeBaseJson {
+  schemaVersion: string;
+  generatedAt: string;
+  metadata: {
+    appName: string;
+    standards: string[];
+    languages: AppLanguage[];
+    counts: Record<KnowledgeSectionKey, number>;
+  };
+  categories: Array<{
+    key: KnowledgeSectionKey;
+    label: Record<AppLanguage, string>;
+    description: Record<AppLanguage, string>;
+    itemCount: number;
+  }>;
+  crops: StructuredCropRecord[];
+  growthStages: StructuredGrowthStageRecord[];
+  careTips: StructuredCareTipRecord[];
+  marketPrices: StructuredMarketPriceRecord[];
+  weatherAlerts: StructuredWeatherAlertRecord[];
+}
+

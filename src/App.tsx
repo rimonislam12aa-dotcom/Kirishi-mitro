@@ -44,6 +44,9 @@ const OfflineSyncDrawer = lazy(() =>
 const AgroServiceHubSection = lazy(() =>
   import('./components/AgroServiceHubSection').then((m) => ({ default: m.AgroServiceHubSection }))
 );
+const KnowledgeBaseSection = lazy(() =>
+  import('./components/KnowledgeBaseSection').then((m) => ({ default: m.KnowledgeBaseSection }))
+);
 
 const SectionSkeleton: React.FC = () => (
   <div className="border-b border-stone-200 bg-[#F7F8F5] py-10 sm:py-12">
@@ -107,6 +110,122 @@ import {
 import heroFarmlandImg from './assets/images/hero_farmland_dawn_1795261297830.jpg';
 
 const LOCAL_VISITOR_STATS_KEY = 'krishi_mitra_local_visitor_stats';
+const PENDING_VISITOR_HITS_KEY = 'krishi_mitra_pending_visitor_hits';
+
+interface PendingVisitorHit {
+  visitorId: string;
+  eventId: string;
+  createdAt: string;
+}
+
+function createVisitorEventId(): string {
+  return `evt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function readPendingVisitorHits(): PendingVisitorHit[] {
+  try {
+    const raw = window.localStorage.getItem(PENDING_VISITOR_HITS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(
+        (item): item is PendingVisitorHit =>
+          Boolean(item) &&
+          typeof item.visitorId === 'string' &&
+          typeof item.eventId === 'string'
+      )
+      .slice(-50);
+  } catch {
+    return [];
+  }
+}
+
+function writePendingVisitorHits(queue: PendingVisitorHit[]): void {
+  try {
+    if (queue.length === 0) {
+      window.localStorage.removeItem(PENDING_VISITOR_HITS_KEY);
+    } else {
+      window.localStorage.setItem(PENDING_VISITOR_HITS_KEY, JSON.stringify(queue.slice(-50)));
+    }
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+function enqueuePendingVisitorHit(visitorId: string, eventId: string): void {
+  const queue = readPendingVisitorHits();
+  if (queue.some((item) => item.eventId === eventId)) return;
+  queue.push({ visitorId, eventId, createdAt: new Date().toISOString() });
+  writePendingVisitorHits(queue);
+}
+
+function removePendingVisitorHit(eventId: string): void {
+  const queue = readPendingVisitorHits();
+  const next = queue.filter((item) => item.eventId !== eventId);
+  if (next.length !== queue.length) {
+    writePendingVisitorHits(next);
+  }
+}
+
+const SafeVercelAnalytics: React.FC = () => {
+  const [vercelInsightsAvailable, setVercelInsightsAvailable] = useState(false);
+
+  useEffect(() => {
+    if (
+      typeof window === 'undefined' ||
+      window.location.protocol === 'file:' ||
+      !navigator.onLine
+    ) {
+      return;
+    }
+
+    const host = window.location.hostname.toLowerCase();
+    if (host.endsWith('.vercel.app')) {
+      setVercelInsightsAvailable(true);
+      return;
+    }
+    if (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host.endsWith('.github.io') ||
+      host.endsWith('.run.app')
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    fetch('/_vercel/insights/script.js', { method: 'HEAD', cache: 'no-store' })
+      .then((res) => {
+        const contentType = (res.headers.get('content-type') || '').toLowerCase();
+        if (!cancelled && res.ok && !contentType.includes('text/html')) {
+          setVercelInsightsAvailable(true);
+        }
+      })
+      .catch(() => {
+        // Not hosted on Vercel — avoid triggering 404 analytics errors
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!vercelInsightsAvailable) {
+    return null;
+  }
+
+  return (
+    <Analytics
+      beforeSend={(event) => {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          return null;
+        }
+        return event;
+      }}
+    />
+  );
+};
 
 function getOrUpdateLocalVisitorStats(countVisit: boolean): VisitorStats {
   const todayKey = new Date().toISOString().slice(0, 10);
@@ -210,6 +329,8 @@ const KrishiAppContent: React.FC = () => {
   const dispatchedAlertKeysRef = useRef<Set<string>>(new Set());
   const toastTimerRef = useRef<number | null>(null);
   const visitRecordedRef = useRef(false);
+  const sessionEventIdRef = useRef<string>(createVisitorEventId());
+  const activeVisitorIdRef = useRef<string | null>(null);
   const autoRefreshInFlightRef = useRef(false);
   const visitorWsRef = useRef<WebSocket | null>(null);
   const visitorWsPingRef = useRef<number | null>(null);
@@ -369,19 +490,13 @@ const KrishiAppContent: React.FC = () => {
     setIsWeatherLoading(false);
 
     if (navigator.onLine) {
-      try {
-        const visitorId = await getOrCreateVisitorId();
-        const countThisVisit = !visitRecordedRef.current;
-        visitRecordedRef.current = true;
-        const [mktRes, visRes] = await Promise.all([
-          fetch('/api/market-prices'),
-          fetch('/api/visitors/hit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ visitorId, countVisit: countThisVisit }),
-          }),
-        ]);
+      const nowIso = new Date().toISOString();
+      setLastAutoUpdateAt(nowIso);
+      await saveLastAutoUpdateAt(nowIso);
 
+      // ১. বাজার দর সিঙ্ক (স্বতন্ত্র try/catch যাতে ভিজিটর ট্র্যাকিংকে প্রভাবিত না করে)
+      try {
+        const mktRes = await fetch('/api/market-prices');
         if (mktRes.ok) {
           const data = await mktRes.json();
           if (Array.isArray(data.updates) && data.updates.length > 0) {
@@ -389,36 +504,93 @@ const KrishiAppContent: React.FC = () => {
             setPrices(merged);
           }
           const nextMeta: MarketSyncMeta = {
-            lastSyncAt: typeof data.lastAutoRefreshAt === 'string' ? data.lastAutoRefreshAt : savedMarketMeta.lastSyncAt,
+            lastSyncAt:
+              typeof data.lastAutoRefreshAt === 'string'
+                ? data.lastAutoRefreshAt
+                : savedMarketMeta.lastSyncAt,
             sources: Array.isArray(data.sources) ? data.sources : savedMarketMeta.sources,
           };
           setMarketSyncMeta(nextMeta);
           await saveMarketSyncMeta(nextMeta);
         }
+      } catch {
+        // অফলাইন বা স্ট্যাটিক হোস্টে নিরাপদে স্কিপ করবে
+      }
+
+      // ২. রিলায়েবল ভিজিটর ও ভিউ ট্র্যাকিং (idempotent eventId + keepalive + ব্যর্থ হলে কিউ রিট্রাই)
+      try {
+        const visitorId = await getOrCreateVisitorId();
+        activeVisitorIdRef.current = visitorId;
+        const eventId = sessionEventIdRef.current;
+
+        // পূর্বে ব্যর্থ/অফলাইন কোনো হিট কিউতে থাকলে আগে ফ্লাশ করা
+        const queuedHits = readPendingVisitorHits();
+        for (const pending of queuedHits) {
+          if (pending.eventId === eventId) continue;
+          try {
+            const qRes = await fetch('/api/visitors/hit', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              keepalive: true,
+              body: JSON.stringify({
+                visitorId: pending.visitorId,
+                countVisit: true,
+                eventId: pending.eventId,
+              }),
+            });
+            if (qRes.ok) {
+              removePendingVisitorHit(pending.eventId);
+            }
+          } catch {
+            break;
+          }
+        }
+
+        const countThisVisit = !visitRecordedRef.current;
+        const visRes = await fetch('/api/visitors/hit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          keepalive: true,
+          body: JSON.stringify({
+            visitorId,
+            countVisit: countThisVisit,
+            eventId,
+          }),
+        });
 
         if (visRes.ok) {
+          visitRecordedRef.current = true;
+          removePendingVisitorHit(eventId);
           const vData = (await visRes.json()) as VisitorStats;
           setVisitorStats(vData);
           await saveCachedVisitorStats(vData);
           visitorWsSupportedRef.current = true;
           window.dispatchEvent(new CustomEvent('krishi-visitors-ready', { detail: { visitorId } }));
         } else {
-          const localStats = getOrUpdateLocalVisitorStats(countThisVisit);
+          if (countThisVisit) {
+            enqueuePendingVisitorHit(visitorId, eventId);
+          }
+          const localStats = getOrUpdateLocalVisitorStats(false);
           setVisitorStats(localStats);
           await saveCachedVisitorStats(localStats);
         }
-
-        const nowIso = new Date().toISOString();
-        setLastAutoUpdateAt(nowIso);
-        await saveLastAutoUpdateAt(nowIso);
       } catch {
-        // অফলাইন বা স্ট্যাটিক হোস্টিং (যেমন GitHub Pages)-এ নিরাপদে লোকাল পরিসংখ্যান দেখাবে
-        const localStats = getOrUpdateLocalVisitorStats(visitRecordedRef.current);
+        const visitorId = activeVisitorIdRef.current || (await getOrCreateVisitorId());
+        activeVisitorIdRef.current = visitorId;
+        if (!visitRecordedRef.current) {
+          enqueuePendingVisitorHit(visitorId, sessionEventIdRef.current);
+        }
+        const localStats = getOrUpdateLocalVisitorStats(false);
         setVisitorStats(localStats);
       }
     } else {
-      const localStats = getOrUpdateLocalVisitorStats(!visitRecordedRef.current);
-      visitRecordedRef.current = true;
+      const visitorId = await getOrCreateVisitorId();
+      activeVisitorIdRef.current = visitorId;
+      if (!visitRecordedRef.current) {
+        enqueuePendingVisitorHit(visitorId, sessionEventIdRef.current);
+        visitRecordedRef.current = true;
+      }
+      const localStats = getOrUpdateLocalVisitorStats(true);
       setVisitorStats(localStats);
     }
 
@@ -434,6 +606,39 @@ const KrishiAppContent: React.FC = () => {
     };
   }, [loadInitialData]);
 
+  // পেজ দ্রুত বন্ধ বা ট্যাব পরিবর্তনের সময় অসমাপ্ত ভিজিট হিট sendBeacon দিয়ে নিরাপদে পাঠানো
+  useEffect(() => {
+    const flushViaBeaconOnHide = () => {
+      if (visitRecordedRef.current || !navigator.onLine) return;
+      const visitorId = activeVisitorIdRef.current;
+      if (!visitorId) return;
+      const payload = JSON.stringify({
+        visitorId,
+        countVisit: true,
+        eventId: sessionEventIdRef.current,
+      });
+      try {
+        if (typeof navigator.sendBeacon === 'function') {
+          const sent = navigator.sendBeacon(
+            '/api/visitors/hit',
+            new Blob([payload], { type: 'application/json' })
+          );
+          if (sent) {
+            visitRecordedRef.current = true;
+            removePendingVisitorHit(sessionEventIdRef.current);
+            return;
+          }
+        }
+        enqueuePendingVisitorHit(visitorId, sessionEventIdRef.current);
+      } catch {
+        enqueuePendingVisitorHit(visitorId, sessionEventIdRef.current);
+      }
+    };
+
+    window.addEventListener('pagehide', flushViaBeaconOnHide);
+    return () => window.removeEventListener('pagehide', flushViaBeaconOnHide);
+  }, []);
+
   const refreshVisitorStats = useCallback(async () => {
     if (!navigator.onLine) {
       const localStats = getOrUpdateLocalVisitorStats(false);
@@ -443,12 +648,47 @@ const KrishiAppContent: React.FC = () => {
     setIsRefreshingVisitors(true);
     try {
       const visitorId = await getOrCreateVisitorId();
+      activeVisitorIdRef.current = visitorId;
+
+      // কিউতে থাকা অফলাইন বা ব্যর্থ ভিজিটগুলো আগে সার্ভারে ফ্লাশ করা
+      const queuedHits = readPendingVisitorHits();
+      for (const pending of queuedHits) {
+        try {
+          const qRes = await fetch('/api/visitors/hit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            keepalive: true,
+            body: JSON.stringify({
+              visitorId: pending.visitorId,
+              countVisit: true,
+              eventId: pending.eventId,
+            }),
+          });
+          if (qRes.ok) {
+            removePendingVisitorHit(pending.eventId);
+            if (pending.eventId === sessionEventIdRef.current) {
+              visitRecordedRef.current = true;
+            }
+          }
+        } catch {
+          break;
+        }
+      }
+
+      const countThisVisit = !visitRecordedRef.current;
       const res = await fetch('/api/visitors/hit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ visitorId, countVisit: false }),
+        keepalive: true,
+        body: JSON.stringify({
+          visitorId,
+          countVisit: countThisVisit,
+          eventId: sessionEventIdRef.current,
+        }),
       });
       if (res.ok) {
+        visitRecordedRef.current = true;
+        removePendingVisitorHit(sessionEventIdRef.current);
         const vData = (await res.json()) as VisitorStats;
         setVisitorStats(vData);
         await saveCachedVisitorStats(vData);
@@ -1132,6 +1372,41 @@ const KrishiAppContent: React.FC = () => {
                 </button>
               ))}
             </div>
+
+            {/* Structured JSON Knowledge Base Quick Strip */}
+            <button
+              type="button"
+              onClick={() =>
+                document.getElementById('knowledge-base')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+              className="group mt-3.5 flex w-full flex-col justify-between gap-3 rounded-xl border border-stone-200 bg-white p-4 text-left transition-colors hover:border-emerald-700 hover:bg-emerald-50/30 sm:flex-row sm:items-center"
+            >
+              <div className="flex items-start gap-3 sm:items-center">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50">
+                  <Database className="h-5 w-5 text-emerald-900" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold text-stone-900">
+                    {lang === 'bn'
+                      ? 'সুশৃঙ্খল কৃষি তথ্যভাণ্ডার ও JSON ক্যাটাগরি'
+                      : lang === 'hi'
+                      ? 'सुव्यवस्थित कृषि ज्ञान भंडार व JSON श्रेणियां'
+                      : 'Structured Agro Knowledge Base & JSON Directory'}
+                  </h3>
+                  <p className="mt-0.5 text-xs sm:text-sm text-stone-600">
+                    {lang === 'bn'
+                      ? 'ফসলের তালিকা · বৃদ্ধির পর্যায় · পরিচর্যা টিপস · বাজার দর · আবহাওয়া সতর্কতা — এক জায়গায় খুঁজুন ও JSON এক্সপোর্ট করুন।'
+                      : lang === 'hi'
+                      ? 'फसलें · विकास चरण · देखभाल सुझाव · मंडी भाव · मौसम चेतावनी — 5 श्रेणियों में खोजें व JSON डाउनलोड करें।'
+                      : 'Crops · Growth Stages · Care Tips · Market Prices · Weather Alerts — filter by category or export JSON.'}
+                  </p>
+                </div>
+              </div>
+              <span className="inline-flex shrink-0 items-center gap-1.5 text-xs sm:text-sm font-semibold text-emerald-900">
+                <span>{t.home.openFeature}</span>
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </span>
+            </button>
           </div>
         </section>
 
@@ -1215,6 +1490,16 @@ const KrishiAppContent: React.FC = () => {
             onSyncMetaChange={(meta) => setMarketSyncMeta(meta)}
           />
         </Suspense>
+
+        {/* সুশৃঙ্খল তথ্যভাণ্ডার (৫টি ক্যাটাগরি ও JSON কাঠামো) */}
+        <Suspense fallback={<SectionSkeleton />}>
+          <KnowledgeBaseSection
+            lang={lang}
+            tips={tips}
+            prices={prices}
+            weather={weather}
+          />
+        </Suspense>
       </main>
 
       {/* ৪. রিয়েল-টাইম দর্শক সংখ্যা ও দ্রুত স্ক্যান কিউআর কোড */}
@@ -1242,6 +1527,7 @@ const KrishiAppContent: React.FC = () => {
             <a href="#scanner" onClick={(e) => { e.preventDefault(); handleNavigate('scanner'); }} className="hover:text-emerald-900 hover:underline underline-offset-4">{t.nav.scanner}</a>
             <a href="#tips" onClick={(e) => { e.preventDefault(); handleNavigate('tips'); }} className="hover:text-emerald-900 hover:underline underline-offset-4">{t.nav.tips}</a>
             <a href="#market" onClick={(e) => { e.preventDefault(); handleNavigate('market'); }} className="hover:text-emerald-900 hover:underline underline-offset-4">{t.nav.market}</a>
+            <a href="#knowledge-base" onClick={(e) => { e.preventDefault(); document.getElementById('knowledge-base')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} className="hover:text-emerald-900 hover:underline underline-offset-4">{lang === 'bn' ? 'তথ্যভাণ্ডার (JSON)' : lang === 'hi' ? 'ज्ञान भंडार (JSON)' : 'Knowledge Base (JSON)'}</a>
           </div>
         </div>
       </footer>
@@ -1271,7 +1557,7 @@ export default function App() {
   return (
     <AudioPlayerProvider>
       <KrishiAppContent />
-      <Analytics />
+      <SafeVercelAnalytics />
     </AudioPlayerProvider>
   );
 }
