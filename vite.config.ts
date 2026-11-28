@@ -61,7 +61,6 @@ export default defineConfig(() => {
                     id.includes('src/catalog/seedData') ||
                     id.includes('src/catalog/agroAdvisoryData') ||
                     id.includes('src/catalog/offlineDiseaseMatcher') ||
-                    id.includes('src/catalog/structuredKnowledgeJson') ||
                     id.includes('src/catalog/i18n')
                   ) {
                     return 'catalog-data';
@@ -89,7 +88,7 @@ export default defineConfig(() => {
           name: 'কৃষি মিত্র — Krishi Mitra',
           short_name: 'KrishiMitra',
           description:
-            'Offline-first smart agriculture app with GPS weather push alerts, camera disease scan, crop calendar, market prices, and audio guidance.',
+            'Offline-first smart agriculture app with GPS weather push alerts, camera disease scan, crop calendar, crop care tips, and audio guidance.',
           theme_color: '#14532D',
           background_color: '#F7F8F5',
           display: 'standalone',
@@ -138,9 +137,9 @@ export default defineConfig(() => {
               icons: [{ src: `${assetPrefix}pwa-192x192.png`, sizes: '192x192', type: 'image/png' }],
             },
             {
-              name: 'বাজার দর',
-              short_name: 'বাজার',
-              url: `${isRelativeBase ? './' : base}#market`,
+              name: 'চাষের টিপস',
+              short_name: 'টিপস',
+              url: `${isRelativeBase ? './' : base}#tips`,
               icons: [{ src: `${assetPrefix}pwa-192x192.png`, sizes: '192x192', type: 'image/png' }],
             },
           ],
@@ -153,7 +152,7 @@ export default defineConfig(() => {
             isRelativeBase ? /\/api\// : new RegExp(`^${escapedBase}api/`),
             /^\/_vercel\//,
           ],
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,woff,woff2}', 'data/*.json'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,woff,woff2}'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -207,21 +206,6 @@ export default defineConfig(() => {
                 expiration: {
                   maxEntries: 20,
                   maxAgeSeconds: 60 * 60 * 12,
-                },
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
-            },
-            {
-              urlPattern: /\/api\/market-prices/i,
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'market-prices-cache',
-                networkTimeoutSeconds: 4,
-                expiration: {
-                  maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24,
                 },
                 cacheableResponse: {
                   statuses: [0, 200],

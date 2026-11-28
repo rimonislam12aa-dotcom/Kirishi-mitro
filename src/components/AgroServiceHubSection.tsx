@@ -99,7 +99,7 @@ const LABELS: Record<
   hi: {
     sectionTitle: 'स्मार्ट कृषि सेवा व स्वचालित अपडेट केंद्र',
     sectionSubtitle:
-      'दिन के समय, मौसम और महीने के अनुसार खेत सलाह तथा तय समय अंतराल पर मौसम, मंडी और कृषि डेटा का ऑटो-अपडेट।',
+      'दिन के समय, मौसम और महीने के अनुसार खेत सलाह तथा तय समय अंतराल पर मौसम और कृषि डेटा का ऑटो-अपडेट।',
     autoUpdateLabel: 'ऑटो-अपडेट समय सारणी',
     lastUpdatedPrefix: 'अंतिम अपडेट',
     nextUpdatePrefix: 'अगला अपडेट',
@@ -131,7 +131,7 @@ const LABELS: Record<
   en: {
     sectionTitle: 'Smart Agro Service & Scheduled Auto-Updates',
     sectionSubtitle:
-      'Time-of-day field guidance, weather-aware spray checks, seasonal briefs, and automatic scheduled syncing for weather, mandi rates, and alerts.',
+      'Time-of-day field guidance, weather-aware spray checks, seasonal briefs, and automatic scheduled syncing for weather and alerts.',
     autoUpdateLabel: 'Scheduled Auto-Sync',
     lastUpdatedPrefix: 'Last Sync',
     nextUpdatePrefix: 'Next Sync',

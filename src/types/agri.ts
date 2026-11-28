@@ -1,6 +1,6 @@
 export type AppLanguage = 'bn' | 'hi' | 'en';
 
-export type NavSection = 'weather' | 'calendar' | 'scanner' | 'tips' | 'market';
+export type NavSection = 'weather' | 'calendar' | 'scanner' | 'yield-radar' | 'tips';
 
 export interface GeoLocationInfo {
   lat: number;
@@ -66,32 +66,6 @@ export interface CropTip {
   bookmarked?: boolean;
 }
 
-export interface MarketPrice {
-  id: string;
-  cropId: string;
-  category: 'grain' | 'vegetable' | 'spice' | 'fruit';
-  cropNameBn: string;
-  cropNameHi: string;
-  cropNameEn: string;
-  marketName: string;
-  district: string;
-  pricePerKg: number;
-  pricePerMaund: number;
-  previousPricePerKg: number;
-  trend: 'up' | 'down' | 'stable';
-  currency: 'BDT' | 'INR';
-  updatedAt: string;
-  reportedBy?: string;
-  sourceLabel?: string;
-  isLiveVerified?: boolean;
-  syncStatus: 'synced' | 'pending';
-}
-
-export interface MarketSourceLink {
-  title: string;
-  uri: string;
-}
-
 export interface DiseaseDiagnosis {
   id: string;
   createdAt: string;
@@ -125,7 +99,7 @@ export interface FarmerFeedback {
   phone: string;
   village: string;
   crop: string;
-  category: 'disease' | 'weather' | 'market' | 'suggestion';
+  category: 'disease' | 'weather' | 'suggestion';
   message: string;
   language: AppLanguage;
   lat?: number;
@@ -164,7 +138,6 @@ export interface OfflineStorageHealth {
 
 export interface OfflineSyncSummary {
   lastSyncAt: string | null;
-  syncedPrices: number;
   processedScans: number;
   failedScans: number;
   status: 'idle' | 'synced' | 'partial' | 'offline' | 'error';
@@ -172,10 +145,9 @@ export interface OfflineSyncSummary {
 
 export interface OfflineDbStats {
   cropTipsCount: number;
-  marketPricesCount: number;
   diagnosesCount: number;
+  yieldPredictionsCount: number;
   pendingScansCount: number;
-  pendingPricesCount: number;
   pendingSyncCount: number;
   audioCachedCount: number;
   hasWeatherCache: boolean;
@@ -271,104 +243,91 @@ export interface FarmerHelplineItem {
   regionNote: Record<AppLanguage, string>;
 }
 
-export type KnowledgeSectionKey =
-  | 'crops'
-  | 'growthStages'
-  | 'careTips'
-  | 'marketPrices'
-  | 'weatherAlerts';
+export type YieldGrowthStageKey = 'seedling' | 'vegetative' | 'flowering' | 'grain_fill';
 
-export type AgroCropGroupKey = 'grain' | 'vegetable' | 'spice' | 'pulse_oil_fiber' | 'fruit';
-
-export interface StructuredCropRecord {
-  cropId: string;
-  category: AgroCropGroupKey;
-  seasonKey: 'rabi' | 'kharif1' | 'kharif2' | 'all';
-  cropName: Record<AppLanguage, string>;
-  variety: Record<AppLanguage, string>;
-  seasonLabel: Record<AppLanguage, string>;
-  durationDaysMin: number;
-  durationDaysMax: number;
-  plantingMonths: number[];
-  harvestMonths: number[];
-  plantingWindowText: Record<AppLanguage, string>;
-  harvestWindowText: Record<AppLanguage, string>;
-  soilAndPh: Record<AppLanguage, string>;
-  spacingAndSeedRate: Record<AppLanguage, string>;
+export interface YieldStagePhotoInput {
+  stageKey: YieldGrowthStageKey;
+  imageDataUrl: string;
+  mimeType: string;
+  note?: string;
 }
 
-export interface StructuredGrowthStageRecord {
-  stageId: string;
-  cropId: string;
-  cropName: Record<AppLanguage, string>;
-  stageOrder: number;
-  dayOffset: number;
-  title: Record<AppLanguage, string>;
-  action: Record<AppLanguage, string>;
-  criticalIrrigationNote?: Record<AppLanguage, string>;
+export interface YieldStageAnalysis {
+  stageKey: YieldGrowthStageKey;
+  stageLabel: string;
+  healthScore: number;
+  vigorStatus: 'excellent' | 'good' | 'moderate' | 'stressed';
+  visualObservations: string;
+  stageRecommendation: string;
 }
 
-export interface StructuredCareTipRecord {
-  tipId: string;
-  cropId: string;
-  cropKey: CropTip['cropKey'];
-  category: AgroCropGroupKey;
-  seasonKey: CropTip['seasonKey'];
-  cropName: Record<AppLanguage, string>;
-  seasonLabel: Record<AppLanguage, string>;
-  title: Record<AppLanguage, string>;
-  summary: Record<AppLanguage, string>;
-  steps: Record<AppLanguage, string[]>;
-  fertilizerNote: Record<AppLanguage, string>;
+export interface YieldPredictionRecord {
+  id: string;
+  createdAt: string;
+  language: AppLanguage;
+  cropName: string;
+  variety: string;
+  landArea: number;
+  landUnit: 'bigha' | 'decimal' | 'acre' | 'hectare';
+  soilType: string;
+  irrigationLevel: string;
+  fertilizerRegime: string;
+  sowingDate: string;
+  districtName?: string;
+  stagesUploaded: YieldGrowthStageKey[];
+  stageThumbnails: { stageKey: YieldGrowthStageKey; imageDataUrl: string }[];
+  stagesAnalyzed: YieldStageAnalysis[];
+  projectedYieldPerBighaKg: number;
+  projectedTotalYieldKg: number;
+  projectedYieldMinKg: number;
+  projectedYieldMaxKg: number;
+  yieldGrade: 'bumper' | 'above_average' | 'average' | 'below_average' | 'at_risk';
+  confidencePercent: number;
+  estimatedHarvestWindow: string;
+  weatherImpactSummary: string;
+  yieldDrivers: string[];
+  yieldBottlenecks: string[];
+  boosterActionPlan: string[];
+  audioSummary: string;
 }
 
-export interface StructuredMarketPriceRecord {
-  priceId: string;
-  cropId: string;
-  category: MarketPrice['category'];
-  cropName: Record<AppLanguage, string>;
-  marketName: string;
-  district: string;
-  pricePerKg: number;
-  pricePerMaund: number;
-  previousPricePerKg: number;
-  trend: MarketPrice['trend'];
-  currency: MarketPrice['currency'];
-  updatedAt: string;
+export interface RegionalPestThreat {
+  pestName: string;
+  scientificName: string;
+  targetCrops: string[];
+  riskPercent: number;
+  riskLevel: 'low' | 'moderate' | 'high' | 'critical';
+  onsetWindow: string;
+  earlyWarningSignals: string[];
+  preventiveShield: string;
+  affectedRadiusNote: string;
 }
 
-export interface StructuredWeatherAlertRecord {
-  alertId: string;
-  level: WeatherAlert['level'];
-  category: 'storm' | 'rain_flood' | 'disease_humidity' | 'heat_stress' | 'cold_fog' | 'wind_spray' | 'air_quality';
-  triggerCondition: Record<AppLanguage, string>;
-  title: Record<AppLanguage, string>;
-  message: Record<AppLanguage, string>;
-  advice: Record<AppLanguage, string>;
-  affectedCrops: Record<AppLanguage, string[]>;
-  isActiveNow: boolean;
-  triggeredAt: string | null;
+export interface RegionalPestObservation {
+  id: string;
+  districtName: string;
+  cropName: string;
+  pestName: string;
+  severity: 'early' | 'moderate' | 'severe';
+  note?: string;
+  createdAt: string;
 }
 
-export interface KrishiKnowledgeBaseJson {
-  schemaVersion: string;
-  generatedAt: string;
-  metadata: {
-    appName: string;
-    standards: string[];
-    languages: AppLanguage[];
-    counts: Record<KnowledgeSectionKey, number>;
-  };
-  categories: Array<{
-    key: KnowledgeSectionKey;
-    label: Record<AppLanguage, string>;
-    description: Record<AppLanguage, string>;
-    itemCount: number;
-  }>;
-  crops: StructuredCropRecord[];
-  growthStages: StructuredGrowthStageRecord[];
-  careTips: StructuredCareTipRecord[];
-  marketPrices: StructuredMarketPriceRecord[];
-  weatherAlerts: StructuredWeatherAlertRecord[];
+export interface RegionalPestRadarResult {
+  id: string;
+  createdAt: string;
+  language: AppLanguage;
+  districtName: string;
+  cropFocus: string;
+  overallRiskLevel: 'low' | 'moderate' | 'high' | 'critical';
+  overallRiskScore: number;
+  outbreakWindowDays: number;
+  weatherTriggerSummary: string;
+  regionalScoutingSummary: string;
+  communitySignalCount: number;
+  predictedOutbreaks: RegionalPestThreat[];
+  recentReports: RegionalPestObservation[];
+  audioSummary: string;
 }
+
 

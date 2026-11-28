@@ -9,8 +9,8 @@ import {
   CloudSun,
   Database,
   Globe,
+  Radar,
   Sprout,
-  Store,
   Volume2,
   Wifi,
   WifiOff,
@@ -29,23 +29,19 @@ const CropCalendarSection = lazy(() =>
 const DiseaseScannerSection = lazy(() =>
   import('./components/DiseaseScannerSection').then((m) => ({ default: m.DiseaseScannerSection }))
 );
+const YieldAndPestIntelligenceSection = lazy(() =>
+  import('./components/YieldAndPestIntelligenceSection').then((m) => ({
+    default: m.YieldAndPestIntelligenceSection,
+  }))
+);
 const CropTipsSection = lazy(() =>
   import('./components/CropTipsSection').then((m) => ({ default: m.CropTipsSection }))
-);
-const MarketPricesSection = lazy(() =>
-  import('./components/MarketPricesSection').then((m) => ({ default: m.MarketPricesSection }))
-);
-const VisitorCounter = lazy(() =>
-  import('./components/VisitorCounter').then((m) => ({ default: m.VisitorCounter }))
 );
 const OfflineSyncDrawer = lazy(() =>
   import('./components/OfflineSyncDrawer').then((m) => ({ default: m.OfflineSyncDrawer }))
 );
 const AgroServiceHubSection = lazy(() =>
   import('./components/AgroServiceHubSection').then((m) => ({ default: m.AgroServiceHubSection }))
-);
-const KnowledgeBaseSection = lazy(() =>
-  import('./components/KnowledgeBaseSection').then((m) => ({ default: m.KnowledgeBaseSection }))
 );
 
 const SectionSkeleton: React.FC = () => (
@@ -67,8 +63,6 @@ import {
   getCropTips,
   getDiagnoses,
   getLastAutoUpdateAt,
-  getMarketPrices,
-  getMarketSyncMeta,
   getNotificationLogs,
   getOfflineDbStats,
   getOrCreateVisitorId,
@@ -77,13 +71,10 @@ import {
   getSavedPushEnabled,
   getWeatherCache,
   initializeOfflineDatabase,
-  MarketSyncMeta,
-  mergeServerMarketPrices,
   saveAutoSyncIntervalMinutes,
   saveCachedVisitorStats,
   saveLanguagePreference,
   saveLastAutoUpdateAt,
-  saveMarketSyncMeta,
   savePushEnabled,
   toggleCropTipBookmark,
 } from './lib/offlineDb';
@@ -98,7 +89,6 @@ import {
   CropTip,
   DiseaseDiagnosis,
   GeoLocationInfo,
-  MarketPrice,
   NavSection,
   OfflineDbStats,
   OfflinePendingScan,
@@ -296,15 +286,13 @@ const KrishiAppContent: React.FC = () => {
   const [weather, setWeather] = useState<WeatherCacheRecord | null>(null);
   const [isWeatherLoading, setIsWeatherLoading] = useState(true);
   const [tips, setTips] = useState<CropTip[]>([]);
-  const [prices, setPrices] = useState<MarketPrice[]>([]);
   const [diagnoses, setDiagnoses] = useState<DiseaseDiagnosis[]>([]);
   const [pendingScans, setPendingScans] = useState<OfflinePendingScan[]>([]);
   const [dbStats, setDbStats] = useState<OfflineDbStats>({
     cropTipsCount: 0,
-    marketPricesCount: 0,
     diagnosesCount: 0,
+    yieldPredictionsCount: 0,
     pendingScansCount: 0,
-    pendingPricesCount: 0,
     pendingSyncCount: 0,
     audioCachedCount: 0,
     hasWeatherCache: false,
@@ -320,7 +308,6 @@ const KrishiAppContent: React.FC = () => {
   const [visitorStats, setVisitorStats] = useState<VisitorStats | null>(null);
   const [isLiveVisitorsConnected, setIsLiveVisitorsConnected] = useState(false);
   const [isRefreshingVisitors, setIsRefreshingVisitors] = useState(false);
-  const [marketSyncMeta, setMarketSyncMeta] = useState<MarketSyncMeta>({ lastSyncAt: null, sources: [] });
   const [autoSyncIntervalMinutes, setAutoSyncIntervalMinutes] = useState<AutoSyncIntervalMinutes>(30);
   const [lastAutoUpdateAt, setLastAutoUpdateAt] = useState<string | null>(null);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
@@ -432,11 +419,9 @@ const KrishiAppContent: React.FC = () => {
       savedLogs,
       cachedVisitors,
       loadedTips,
-      loadedPrices,
       loadedDiagnoses,
       loadedPendingScans,
       cachedWeather,
-      savedMarketMeta,
       savedAutoInterval,
       savedLastAutoUpdate,
     ] = await Promise.all([
@@ -445,11 +430,9 @@ const KrishiAppContent: React.FC = () => {
       getNotificationLogs(),
       getCachedVisitorStats(),
       getCropTips(),
-      getMarketPrices(),
       getDiagnoses(),
       getPendingScans(),
       getWeatherCache(),
-      getMarketSyncMeta(),
       getAutoSyncIntervalMinutes(),
       getLastAutoUpdateAt(),
     ]);
@@ -461,10 +444,8 @@ const KrishiAppContent: React.FC = () => {
       setVisitorStats(cachedVisitors);
     }
     setTips(loadedTips);
-    setPrices(loadedPrices);
     setDiagnoses(loadedDiagnoses);
     setPendingScans(loadedPendingScans);
-    setMarketSyncMeta(savedMarketMeta);
     setAutoSyncIntervalMinutes(savedAutoInterval);
     if (savedLastAutoUpdate) {
       setLastAutoUpdateAt(savedLastAutoUpdate);
@@ -494,30 +475,7 @@ const KrishiAppContent: React.FC = () => {
       setLastAutoUpdateAt(nowIso);
       await saveLastAutoUpdateAt(nowIso);
 
-      // ১. বাজার দর সিঙ্ক (স্বতন্ত্র try/catch যাতে ভিজিটর ট্র্যাকিংকে প্রভাবিত না করে)
-      try {
-        const mktRes = await fetch('/api/market-prices');
-        if (mktRes.ok) {
-          const data = await mktRes.json();
-          if (Array.isArray(data.updates) && data.updates.length > 0) {
-            const merged = await mergeServerMarketPrices(data.updates);
-            setPrices(merged);
-          }
-          const nextMeta: MarketSyncMeta = {
-            lastSyncAt:
-              typeof data.lastAutoRefreshAt === 'string'
-                ? data.lastAutoRefreshAt
-                : savedMarketMeta.lastSyncAt,
-            sources: Array.isArray(data.sources) ? data.sources : savedMarketMeta.sources,
-          };
-          setMarketSyncMeta(nextMeta);
-          await saveMarketSyncMeta(nextMeta);
-        }
-      } catch {
-        // অফলাইন বা স্ট্যাটিক হোস্টে নিরাপদে স্কিপ করবে
-      }
-
-      // ২. রিলায়েবল ভিজিটর ও ভিউ ট্র্যাকিং (idempotent eventId + keepalive + ব্যর্থ হলে কিউ রিট্রাই)
+      // রিলায়েবল ভিজিটর ও ভিউ ট্র্যাকিং (idempotent eventId + keepalive + ব্যর্থ হলে কিউ রিট্রাই)
       try {
         const visitorId = await getOrCreateVisitorId();
         activeVisitorIdRef.current = visitorId;
@@ -858,16 +816,14 @@ const KrishiAppContent: React.FC = () => {
   }, [pushEnabled, weather, lang, handleSendPushAlert]);
 
   const reloadAllFromIndexedDb = useCallback(async () => {
-    const [loadedTips, loadedPrices, loadedDiagnoses, loadedPendingScans, cachedWeather] =
+    const [loadedTips, loadedDiagnoses, loadedPendingScans, cachedWeather] =
       await Promise.all([
         getCropTips(),
-        getMarketPrices(),
         getDiagnoses(),
         getPendingScans(),
         getWeatherCache(),
       ]);
     setTips(loadedTips);
-    setPrices(loadedPrices);
     setDiagnoses(loadedDiagnoses);
     setPendingScans(loadedPendingScans);
     if (cachedWeather) {
@@ -884,7 +840,6 @@ const KrishiAppContent: React.FC = () => {
       setIsSyncing(true);
       try {
         const result = await runFullOfflineSync({ processScans, weather });
-        setPrices(result.prices);
         setDiagnoses(result.diagnoses);
         setPendingScans(result.pendingScans);
         await refreshStats();
@@ -894,12 +849,6 @@ const KrishiAppContent: React.FC = () => {
     },
     [isOnline, refreshStats, weather]
   );
-
-  useEffect(() => {
-    if (isOnline && dbStats.pendingPricesCount > 0) {
-      handleSyncAll(false);
-    }
-  }, [isOnline, dbStats.pendingPricesCount, handleSyncAll]);
 
   // লাইভ সময়সূচি ও কাউন্টডাউন প্রতি ৩০ সেকেন্ডে আপডেট হবে
   useEffect(() => {
@@ -932,30 +881,7 @@ const KrishiAppContent: React.FC = () => {
       setWeather(freshWeather);
 
       try {
-        const mktRes = await fetch('/api/market-prices');
-        if (mktRes.ok) {
-          const data = await mktRes.json();
-          if (Array.isArray(data.updates) && data.updates.length > 0) {
-            const merged = await mergeServerMarketPrices(data.updates);
-            setPrices(merged);
-          }
-          const nextMeta: MarketSyncMeta = {
-            lastSyncAt:
-              typeof data.lastAutoRefreshAt === 'string'
-                ? data.lastAutoRefreshAt
-                : marketSyncMeta.lastSyncAt,
-            sources: Array.isArray(data.sources) ? data.sources : marketSyncMeta.sources,
-          };
-          setMarketSyncMeta(nextMeta);
-          await saveMarketSyncMeta(nextMeta);
-        }
-      } catch {
-        // স্ট্যাটিক হোস্টিংয়ে মৃদুভাবে স্কিপ করবে
-      }
-
-      try {
         const syncResult = await runFullOfflineSync({ processScans: false, weather: freshWeather });
-        setPrices(syncResult.prices);
         setDiagnoses(syncResult.diagnoses);
         setPendingScans(syncResult.pendingScans);
       } catch {
@@ -971,7 +897,7 @@ const KrishiAppContent: React.FC = () => {
       autoRefreshInFlightRef.current = false;
       setIsAutoRefreshing(false);
     }
-  }, [lang, marketSyncMeta.lastSyncAt, marketSyncMeta.sources, refreshStats, refreshVisitorStats, weather]);
+  }, [lang, refreshStats, refreshVisitorStats, weather]);
 
   const handleChangeAutoSyncInterval = useCallback(async (minutes: AutoSyncIntervalMinutes) => {
     setAutoSyncIntervalMinutes(minutes);
@@ -1039,14 +965,6 @@ const KrishiAppContent: React.FC = () => {
     const hasHumidity = typeof weather?.humidity === 'number';
     const hasAqi = typeof weather?.aqi === 'number';
     const firstAlert = weather?.alerts[0]?.advice[lang] ?? t.weather.noAlerts;
-    const samplePrice = prices[0];
-    const priceLine = samplePrice
-      ? lang === 'bn'
-        ? `আজকের বাজারে ${samplePrice.cropNameBn} প্রতি কেজি ${samplePrice.pricePerKg} টাকা।`
-        : lang === 'hi'
-        ? `आज मंडी में ${samplePrice.cropNameHi} ${samplePrice.pricePerKg} प्रति किलो है।`
-        : `Today at ${samplePrice.marketName}, ${samplePrice.cropNameEn} is ${samplePrice.pricePerKg} per kg.`
-      : '';
 
     const weatherPart =
       lang === 'bn'
@@ -1069,10 +987,10 @@ const KrishiAppContent: React.FC = () => {
 
     const briefing =
       lang === 'bn'
-        ? `আসসালামু আলাইকুম, কৃষি মিত্রে স্বাগতম। ${weatherPart} ${firstAlert} ${priceLine}`
+        ? `আসসালামু আলাইকুম, কৃষি মিত্রে স্বাগতম। ${weatherPart} ${firstAlert}`
         : lang === 'hi'
-        ? `अस्सलामु अलैकुम, कृषि मित्र में आपका स्वागत है। ${weatherPart} ${firstAlert} ${priceLine}`
-        : `Assalamu Alaikum, welcome to Krishi Mitra. ${weatherPart} ${firstAlert} ${priceLine}`;
+        ? `अस्सलामु अलैकुम, कृषि मित्र में आपका स्वागत है। ${weatherPart} ${firstAlert}`
+        : `Assalamu Alaikum, welcome to Krishi Mitra. ${weatherPart} ${firstAlert}`;
 
     playTrack({
       id: `hero-briefing-${lang}`,
@@ -1320,6 +1238,14 @@ const KrishiAppContent: React.FC = () => {
                   onClick: () => handleNavigate('scanner'),
                 },
                 {
+                  id: 'yield-radar',
+                  title: t.home.yieldRadarTitle,
+                  desc: t.home.yieldRadarDesc,
+                  meta: `${dbStats.yieldPredictionsCount} · ${t.nav.yieldRadar}`,
+                  icon: <Radar className="h-5 w-5 text-emerald-900" />,
+                  onClick: () => handleNavigate('yield-radar'),
+                },
+                {
                   id: 'calendar',
                   title: t.home.calendarTitle,
                   desc: t.home.calendarDesc,
@@ -1334,14 +1260,6 @@ const KrishiAppContent: React.FC = () => {
                   meta: `${tips.length} ${t.nav.tips}`,
                   icon: <Sprout className="h-5 w-5 text-emerald-900" />,
                   onClick: () => handleNavigate('tips'),
-                },
-                {
-                  id: 'market',
-                  title: t.home.marketTitle,
-                  desc: t.home.marketDesc,
-                  meta: `${prices.length} ${t.nav.market}`,
-                  icon: <Store className="h-5 w-5 text-emerald-900" />,
-                  onClick: () => handleNavigate('market'),
                 },
               ].map((feature) => (
                 <button
@@ -1372,41 +1290,6 @@ const KrishiAppContent: React.FC = () => {
                 </button>
               ))}
             </div>
-
-            {/* Structured JSON Knowledge Base Quick Strip */}
-            <button
-              type="button"
-              onClick={() =>
-                document.getElementById('knowledge-base')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }
-              className="group mt-3.5 flex w-full flex-col justify-between gap-3 rounded-xl border border-stone-200 bg-white p-4 text-left transition-colors hover:border-emerald-700 hover:bg-emerald-50/30 sm:flex-row sm:items-center"
-            >
-              <div className="flex items-start gap-3 sm:items-center">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50">
-                  <Database className="h-5 w-5 text-emerald-900" />
-                </div>
-                <div>
-                  <h3 className="text-sm sm:text-base font-bold text-stone-900">
-                    {lang === 'bn'
-                      ? 'সুশৃঙ্খল কৃষি তথ্যভাণ্ডার ও JSON ক্যাটাগরি'
-                      : lang === 'hi'
-                      ? 'सुव्यवस्थित कृषि ज्ञान भंडार व JSON श्रेणियां'
-                      : 'Structured Agro Knowledge Base & JSON Directory'}
-                  </h3>
-                  <p className="mt-0.5 text-xs sm:text-sm text-stone-600">
-                    {lang === 'bn'
-                      ? 'ফসলের তালিকা · বৃদ্ধির পর্যায় · পরিচর্যা টিপস · বাজার দর · আবহাওয়া সতর্কতা — এক জায়গায় খুঁজুন ও JSON এক্সপোর্ট করুন।'
-                      : lang === 'hi'
-                      ? 'फसलें · विकास चरण · देखभाल सुझाव · मंडी भाव · मौसम चेतावनी — 5 श्रेणियों में खोजें व JSON डाउनलोड करें।'
-                      : 'Crops · Growth Stages · Care Tips · Market Prices · Weather Alerts — filter by category or export JSON.'}
-                  </p>
-                </div>
-              </div>
-              <span className="inline-flex shrink-0 items-center gap-1.5 text-xs sm:text-sm font-semibold text-emerald-900">
-                <span>{t.home.openFeature}</span>
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-              </span>
-            </button>
           </div>
         </section>
 
@@ -1464,6 +1347,17 @@ const KrishiAppContent: React.FC = () => {
           />
         </Suspense>
 
+        {/* বহু-ধাপ ফলন পূর্বাভাস এআই ও আঞ্চলিক বালাই রাডার */}
+        <Suspense fallback={<SectionSkeleton />}>
+          <YieldAndPestIntelligenceSection
+            lang={lang}
+            isOnline={isOnline}
+            weather={weather}
+            savedDiagnoses={diagnoses}
+            onDataChange={refreshStats}
+          />
+        </Suspense>
+
         {/* মৌসুমভিত্তিক ফসল পরিচর্যা টিপস */}
         <Suspense fallback={<SectionSkeleton />}>
           <CropTipsSection
@@ -1473,49 +1367,9 @@ const KrishiAppContent: React.FC = () => {
             onToggleBookmark={handleToggleBookmark}
           />
         </Suspense>
-
-        {/* স্থানীয় বাজারের ফসলের দর */}
-        <Suspense fallback={<SectionSkeleton />}>
-          <MarketPricesSection
-            t={t}
-            lang={lang}
-            isOnline={isOnline}
-            districtName={weather?.location.districtName}
-            prices={prices}
-            syncMeta={marketSyncMeta}
-            onPricesChange={(next) => {
-              setPrices(next);
-              refreshStats();
-            }}
-            onSyncMetaChange={(meta) => setMarketSyncMeta(meta)}
-          />
-        </Suspense>
-
-        {/* সুশৃঙ্খল তথ্যভাণ্ডার (৫টি ক্যাটাগরি ও JSON কাঠামো) */}
-        <Suspense fallback={<SectionSkeleton />}>
-          <KnowledgeBaseSection
-            lang={lang}
-            tips={tips}
-            prices={prices}
-            weather={weather}
-          />
-        </Suspense>
       </main>
 
-      {/* ৪. রিয়েল-টাইম দর্শক সংখ্যা ও দ্রুত স্ক্যান কিউআর কোড */}
-      <Suspense fallback={<SectionSkeleton />}>
-        <VisitorCounter
-          t={t}
-          lang={lang}
-          stats={visitorStats}
-          variant="card"
-          isLiveConnected={isLiveVisitorsConnected}
-          isRefreshing={isRefreshingVisitors}
-          onRefresh={refreshVisitorStats}
-        />
-      </Suspense>
-
-      {/* ৫. ফুটার */}
+      {/* ৪. ফুটার */}
       <footer className="border-t border-stone-200 bg-[#F7F8F5] py-8 text-center text-xs sm:text-sm text-stone-600">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <p className="font-semibold text-stone-800">{t.brandName}</p>
@@ -1525,9 +1379,8 @@ const KrishiAppContent: React.FC = () => {
             <a href="#weather" onClick={(e) => { e.preventDefault(); handleNavigate('weather'); }} className="hover:text-emerald-900 hover:underline underline-offset-4">{t.nav.weather}</a>
             <a href="#calendar" onClick={(e) => { e.preventDefault(); handleNavigate('calendar'); }} className="hover:text-emerald-900 hover:underline underline-offset-4">{t.nav.calendar}</a>
             <a href="#scanner" onClick={(e) => { e.preventDefault(); handleNavigate('scanner'); }} className="hover:text-emerald-900 hover:underline underline-offset-4">{t.nav.scanner}</a>
+            <a href="#yield-radar" onClick={(e) => { e.preventDefault(); handleNavigate('yield-radar'); }} className="hover:text-emerald-900 hover:underline underline-offset-4">{t.nav.yieldRadar}</a>
             <a href="#tips" onClick={(e) => { e.preventDefault(); handleNavigate('tips'); }} className="hover:text-emerald-900 hover:underline underline-offset-4">{t.nav.tips}</a>
-            <a href="#market" onClick={(e) => { e.preventDefault(); handleNavigate('market'); }} className="hover:text-emerald-900 hover:underline underline-offset-4">{t.nav.market}</a>
-            <a href="#knowledge-base" onClick={(e) => { e.preventDefault(); document.getElementById('knowledge-base')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} className="hover:text-emerald-900 hover:underline underline-offset-4">{lang === 'bn' ? 'তথ্যভাণ্ডার (JSON)' : lang === 'hi' ? 'ज्ञान भंडार (JSON)' : 'Knowledge Base (JSON)'}</a>
           </div>
         </div>
       </footer>

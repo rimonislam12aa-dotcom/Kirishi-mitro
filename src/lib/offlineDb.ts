@@ -1,31 +1,32 @@
-import { SEED_CROP_TIPS, SEED_MARKET_PRICES } from '../catalog/seedData';
+import { SEED_CROP_TIPS } from '../catalog/seedData';
 import {
   AppLanguage,
   AutoSyncIntervalMinutes,
   CropTip,
   DiseaseDiagnosis,
   FarmerFeedback,
-  MarketPrice,
-  MarketSourceLink,
   OfflineDbStats,
   OfflinePendingScan,
   PushNotificationItem,
+  RegionalPestRadarResult,
   VisitorStats,
   WeatherCacheRecord,
+  YieldPredictionRecord,
 } from '../types/agri';
 
 const DB_NAME = 'krishi_mitra_db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 const STORES = {
   CROP_TIPS: 'crop_tips',
-  MARKET_PRICES: 'market_prices',
   WEATHER_CACHE: 'weather_cache',
   DIAGNOSES: 'diagnoses',
   PENDING_SCANS: 'pending_scans',
   FEEDBACK_QUEUE: 'feedback_queue',
   AUDIO_CACHE: 'audio_cache',
   PREFERENCES: 'preferences',
+  YIELD_PREDICTIONS: 'yield_predictions',
+  PEST_RADAR_CACHE: 'pest_radar_cache',
 } as const;
 
 interface AudioCacheEntry {
@@ -58,9 +59,6 @@ function openDatabase(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(STORES.CROP_TIPS)) {
         db.createObjectStore(STORES.CROP_TIPS, { keyPath: 'id' });
       }
-      if (!db.objectStoreNames.contains(STORES.MARKET_PRICES)) {
-        db.createObjectStore(STORES.MARKET_PRICES, { keyPath: 'id' });
-      }
       if (!db.objectStoreNames.contains(STORES.WEATHER_CACHE)) {
         db.createObjectStore(STORES.WEATHER_CACHE, { keyPath: 'id' });
       }
@@ -78,6 +76,12 @@ function openDatabase(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(STORES.PREFERENCES)) {
         db.createObjectStore(STORES.PREFERENCES, { keyPath: 'key' });
+      }
+      if (!db.objectStoreNames.contains(STORES.YIELD_PREDICTIONS)) {
+        db.createObjectStore(STORES.YIELD_PREDICTIONS, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORES.PEST_RADAR_CACHE)) {
+        db.createObjectStore(STORES.PEST_RADAR_CACHE, { keyPath: 'id' });
       }
     };
 
@@ -173,20 +177,6 @@ export async function initializeOfflineDatabase(): Promise<void> {
       await putManyInStore(STORES.CROP_TIPS, tipsToSave);
     }
   }
-
-  const existingPrices = await getAllFromStore<MarketPrice>(STORES.MARKET_PRICES);
-  if (existingPrices.length === 0) {
-    await putManyInStore(STORES.MARKET_PRICES, SEED_MARKET_PRICES);
-  } else {
-    const existingIds = new Set(existingPrices.map((p) => p.id));
-    const existingCropIds = new Set(existingPrices.map((p) => p.cropId));
-    const missingPrices = SEED_MARKET_PRICES.filter(
-      (seed) => !existingIds.has(seed.id) && !existingCropIds.has(seed.cropId)
-    );
-    if (missingPrices.length > 0) {
-      await putManyInStore(STORES.MARKET_PRICES, missingPrices);
-    }
-  }
 }
 
 export async function getCropTips(): Promise<CropTip[]> {
@@ -200,57 +190,6 @@ export async function toggleCropTipBookmark(tipId: string): Promise<CropTip[]> {
     await putInStore(STORES.CROP_TIPS, { ...tip, bookmarked: !tip.bookmarked });
   }
   return getCropTips();
-}
-
-export async function getMarketPrices(): Promise<MarketPrice[]> {
-  await initializeOfflineDatabase();
-  const list = await getAllFromStore<MarketPrice>(STORES.MARKET_PRICES);
-  return list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-}
-
-export async function saveMarketPrice(price: MarketPrice): Promise<MarketPrice[]> {
-  const existing = await getAllFromStore<MarketPrice>(STORES.MARKET_PRICES);
-  const duplicate = existing.find(
-    (item) =>
-      item.id === price.id ||
-      (item.cropId === price.cropId &&
-        item.marketName.trim().toLowerCase() === price.marketName.trim().toLowerCase())
-  );
-  const recordToSave: MarketPrice = duplicate
-    ? {
-        ...price,
-        id: duplicate.id,
-        previousPricePerKg:
-          price.previousPricePerKg && price.previousPricePerKg !== price.pricePerKg
-            ? price.previousPricePerKg
-            : duplicate.pricePerKg,
-      }
-    : price;
-  await putInStore(STORES.MARKET_PRICES, recordToSave);
-  return getMarketPrices();
-}
-
-export async function mergeServerMarketPrices(serverUpdates: MarketPrice[]): Promise<MarketPrice[]> {
-  if (serverUpdates.length > 0) {
-    const existing = await getAllFromStore<MarketPrice>(STORES.MARKET_PRICES);
-    const byCropId = new Map(existing.map((e) => [e.cropId, e]));
-    const normalized = serverUpdates.map((item) => {
-      const match = existing.find((e) => e.id === item.id) ?? byCropId.get(item.cropId);
-      const idToUse = match ? match.id : item.id;
-      const prevPrice =
-        typeof item.previousPricePerKg === 'number' && item.previousPricePerKg > 0
-          ? item.previousPricePerKg
-          : match?.pricePerKg ?? item.pricePerKg;
-      return {
-        ...item,
-        id: idToUse,
-        previousPricePerKg: prevPrice,
-        syncStatus: 'synced' as const,
-      };
-    });
-    await putManyInStore(STORES.MARKET_PRICES, normalized);
-  }
-  return getMarketPrices();
 }
 
 export async function getWeatherCache(): Promise<WeatherCacheRecord | undefined> {
@@ -287,6 +226,36 @@ export async function deleteDiagnosis(id: string): Promise<DiseaseDiagnosis[]> {
   return getDiagnoses();
 }
 
+export async function getYieldPredictions(): Promise<YieldPredictionRecord[]> {
+  const items = await getAllFromStore<YieldPredictionRecord>(STORES.YIELD_PREDICTIONS);
+  return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+export async function saveYieldPrediction(record: YieldPredictionRecord): Promise<YieldPredictionRecord[]> {
+  await putInStore(STORES.YIELD_PREDICTIONS, record);
+  return getYieldPredictions();
+}
+
+export async function saveManyYieldPredictions(list: YieldPredictionRecord[]): Promise<YieldPredictionRecord[]> {
+  if (list.length > 0) {
+    await putManyInStore(STORES.YIELD_PREDICTIONS, list);
+  }
+  return getYieldPredictions();
+}
+
+export async function deleteYieldPrediction(id: string): Promise<YieldPredictionRecord[]> {
+  await deleteByKey(STORES.YIELD_PREDICTIONS, id);
+  return getYieldPredictions();
+}
+
+export async function getCachedPestRadar(): Promise<RegionalPestRadarResult | undefined> {
+  return getByKey<RegionalPestRadarResult>(STORES.PEST_RADAR_CACHE, 'latest');
+}
+
+export async function saveCachedPestRadar(record: RegionalPestRadarResult): Promise<void> {
+  await putInStore(STORES.PEST_RADAR_CACHE, { ...record, id: 'latest' });
+}
+
 export async function getPendingScans(): Promise<OfflinePendingScan[]> {
   const items = await getAllFromStore<OfflinePendingScan>(STORES.PENDING_SCANS);
   return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -307,11 +276,6 @@ export async function saveManyPendingScans(list: OfflinePendingScan[]): Promise<
 export async function deletePendingScan(id: string): Promise<OfflinePendingScan[]> {
   await deleteByKey(STORES.PENDING_SCANS, id);
   return getPendingScans();
-}
-
-export async function deleteMarketPrice(id: string): Promise<MarketPrice[]> {
-  await deleteByKey(STORES.MARKET_PRICES, id);
-  return getMarketPrices();
 }
 
 export async function setCropTipsBulk(tips: CropTip[]): Promise<CropTip[]> {
@@ -476,28 +440,6 @@ export async function saveCachedVisitorStats(stats: VisitorStats): Promise<void>
   await putInStore(STORES.PREFERENCES, { key: 'visitorStats', value: stats });
 }
 
-export interface MarketSyncMeta {
-  lastSyncAt: string | null;
-  sources: MarketSourceLink[];
-}
-
-export async function getMarketSyncMeta(): Promise<MarketSyncMeta> {
-  try {
-    const entry = await getByKey<PreferenceEntry>(STORES.PREFERENCES, 'marketSyncMeta');
-    const val = entry?.value as Partial<MarketSyncMeta> | undefined;
-    return {
-      lastSyncAt: typeof val?.lastSyncAt === 'string' ? val.lastSyncAt : null,
-      sources: Array.isArray(val?.sources) ? val.sources : [],
-    };
-  } catch {
-    return { lastSyncAt: null, sources: [] };
-  }
-}
-
-export async function saveMarketSyncMeta(meta: MarketSyncMeta): Promise<void> {
-  await putInStore(STORES.PREFERENCES, { key: 'marketSyncMeta', value: meta });
-}
-
 export async function getLastOfflineSyncAt(): Promise<string | null> {
   try {
     const entry = await getByKey<PreferenceEntry>(STORES.PREFERENCES, 'lastOfflineSyncAt');
@@ -541,9 +483,8 @@ export async function saveLastAutoUpdateAt(iso: string): Promise<void> {
   await putInStore(STORES.PREFERENCES, { key: 'lastAutoUpdateAt', value: iso });
 }
 
-export async function syncPendingOfflineRecords(): Promise<{ syncedFeedback: number; syncedPrices: number }> {
+export async function syncPendingOfflineRecords(): Promise<{ syncedFeedback: number }> {
   let syncedFeedback = 0;
-  let syncedPrices = 0;
 
   const feedbackList = await getFeedbackList();
   for (const fb of feedbackList) {
@@ -564,49 +505,28 @@ export async function syncPendingOfflineRecords(): Promise<{ syncedFeedback: num
     }
   }
 
-  const prices = await getMarketPrices();
-  for (const price of prices) {
-    if (price.syncStatus === 'pending') {
-      try {
-        const res = await fetch('/api/market-prices', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(price),
-        });
-        if (res.ok) {
-          await putInStore(STORES.MARKET_PRICES, { ...price, syncStatus: 'synced' });
-          syncedPrices += 1;
-        }
-      } catch {
-        // Still offline
-      }
-    }
-  }
-
-  return { syncedFeedback, syncedPrices };
+  return { syncedFeedback };
 }
 
 export async function getOfflineDbStats(): Promise<OfflineDbStats> {
-  const [tips, prices, diagnoses, pendingScans, weather, audio, lastSyncAt] = await Promise.all([
+  const [tips, diagnoses, yieldPredictions, pendingScans, weather, audio, lastSyncAt] = await Promise.all([
     getAllFromStore<CropTip>(STORES.CROP_TIPS),
-    getAllFromStore<MarketPrice>(STORES.MARKET_PRICES),
     getAllFromStore<DiseaseDiagnosis>(STORES.DIAGNOSES),
+    getAllFromStore<YieldPredictionRecord>(STORES.YIELD_PREDICTIONS),
     getAllFromStore<OfflinePendingScan>(STORES.PENDING_SCANS),
     getWeatherCache(),
     getAllFromStore<AudioCacheEntry>(STORES.AUDIO_CACHE),
     getLastOfflineSyncAt(),
   ]);
 
-  const pendingPricesCount = prices.filter((p) => p.syncStatus === 'pending').length;
   const pendingScansCount = pendingScans.length;
-  const pendingSyncCount = pendingPricesCount + pendingScansCount;
+  const pendingSyncCount = pendingScansCount;
 
   return {
     cropTipsCount: tips.length,
-    marketPricesCount: prices.length,
     diagnosesCount: diagnoses.length,
+    yieldPredictionsCount: yieldPredictions.length,
     pendingScansCount,
-    pendingPricesCount,
     pendingSyncCount,
     audioCachedCount: audio.length,
     hasWeatherCache: Boolean(weather),
@@ -615,17 +535,17 @@ export async function getOfflineDbStats(): Promise<OfflineDbStats> {
 }
 
 export async function estimateFallbackBytes(): Promise<number> {
-  const [tips, prices, diagnoses, pendingScans, weather, audio] = await Promise.all([
+  const [tips, diagnoses, yieldPredictions, pendingScans, weather, audio] = await Promise.all([
     getAllFromStore<CropTip>(STORES.CROP_TIPS),
-    getAllFromStore<MarketPrice>(STORES.MARKET_PRICES),
     getAllFromStore<DiseaseDiagnosis>(STORES.DIAGNOSES),
+    getAllFromStore<YieldPredictionRecord>(STORES.YIELD_PREDICTIONS),
     getAllFromStore<OfflinePendingScan>(STORES.PENDING_SCANS),
     getWeatherCache(),
     getAllFromStore<AudioCacheEntry>(STORES.AUDIO_CACHE),
   ]);
   try {
     return new Blob([
-      JSON.stringify({ tips, prices, diagnoses, pendingScans, weather, audio }),
+      JSON.stringify({ tips, diagnoses, yieldPredictions, pendingScans, weather, audio }),
     ]).size;
   } catch {
     return 0;
@@ -633,25 +553,27 @@ export async function estimateFallbackBytes(): Promise<number> {
 }
 
 export async function exportAllOfflineData(): Promise<string> {
-  const [tips, prices, diagnoses, pendingScans, weather, language] = await Promise.all([
+  const [tips, diagnoses, yieldPredictions, pendingScans, weather, pestRadar, language] = await Promise.all([
     getCropTips(),
-    getMarketPrices(),
     getDiagnoses(),
+    getYieldPredictions(),
     getPendingScans(),
     getWeatherCache(),
+    getCachedPestRadar(),
     getSavedLanguage(),
   ]);
 
   return JSON.stringify(
     {
-      schemaVersion: 2,
+      schemaVersion: 4,
       exportedAt: new Date().toISOString(),
       app: 'Krishi Mitra Offline Backup',
       language,
       weather,
+      pestRadar,
       cropTips: tips,
-      marketPrices: prices,
       diagnoses,
+      yieldPredictions,
       pendingScans,
     },
     null,

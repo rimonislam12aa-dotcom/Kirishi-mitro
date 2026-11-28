@@ -872,9 +872,9 @@ export const CROP_CALENDAR_DATA: CropCalendarItem[] = [
           "en": "First Picking Begins"
         },
         "action": {
-          "bn": "দূরবর্তী বাজারে পাঠাতে রঙ ধরার শুরুতে (Breaker stage) এবং স্থানীয় বাজারে পাকা টমেটো তুলুন।",
-          "hi": "मंडी के लिए हल्का लाल होने पर तुड़ाई शुरू करें।",
-          "en": "Pick at breaker stage for transport or full red for local haat."
+          "bn": "রঙ ধরার শুরুতে (Breaker stage) অথবা সম্পূর্ণ পাকা টমেটো সাবধানে সংগ্রহ করুন।",
+          "hi": "हल्का लाल होने पर या पूरी तरह पकने पर तुड़ाई शुरू करें।",
+          "en": "Pick at breaker stage for storage or full red for fresh use."
         }
       },
       {

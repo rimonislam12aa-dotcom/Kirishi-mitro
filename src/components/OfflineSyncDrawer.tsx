@@ -115,10 +115,9 @@ export const OfflineSyncDrawer: React.FC<OfflineSyncDrawerProps> = ({
 
   const statRows: { label: string; value: string | number }[] = [
     { label: t.offlineDrawer.tipsCount, value: stats.cropTipsCount },
-    { label: t.offlineDrawer.marketCount, value: stats.marketPricesCount },
     { label: t.offlineDrawer.diagnosesCount, value: stats.diagnosesCount },
+    { label: t.offlineDrawer.yieldPredictionsCount, value: stats.yieldPredictionsCount },
     { label: t.offlineDrawer.pendingScansCount, value: stats.pendingScansCount },
-    { label: t.offlineDrawer.pendingPricesCount, value: stats.pendingPricesCount },
     { label: t.offlineDrawer.audioCached, value: stats.audioCachedCount },
     {
       label: t.offlineDrawer.weatherCached,

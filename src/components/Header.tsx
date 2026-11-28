@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Camera, CloudSun, Sprout, Store } from 'lucide-react';
+import { Calendar, Camera, CloudSun, Radar, Sprout } from 'lucide-react';
 import { Translations } from '../catalog/i18n';
 import { NavSection } from '../types/agri';
 
@@ -14,8 +14,8 @@ export const Header: React.FC<HeaderProps> = ({ t, activeSection, onNavigate }) 
     { id: 'weather', label: t.nav.weather, icon: <CloudSun className="h-5 w-5" /> },
     { id: 'calendar', label: t.nav.calendar, icon: <Calendar className="h-5 w-5" /> },
     { id: 'scanner', label: t.nav.scanner, icon: <Camera className="h-5 w-5" /> },
+    { id: 'yield-radar', label: t.nav.yieldRadar, icon: <Radar className="h-5 w-5" /> },
     { id: 'tips', label: t.nav.tips, icon: <Sprout className="h-5 w-5" /> },
-    { id: 'market', label: t.nav.market, icon: <Store className="h-5 w-5" /> },
   ];
 
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, id: NavSection) => {
@@ -37,7 +37,7 @@ export const Header: React.FC<HeaderProps> = ({ t, activeSection, onNavigate }) 
             {t.brandName}
           </a>
 
-          {/* Zone 2: 5 concise single-line text nav links */}
+          {/* Zone 2: 4 concise single-line text nav links */}
           <nav
             aria-label="Primary"
             className="hidden md:flex items-center gap-3.5 lg:gap-7 text-xs lg:text-sm font-medium text-stone-600"

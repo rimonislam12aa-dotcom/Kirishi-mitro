@@ -87,7 +87,7 @@ define(['./workbox-957bde9c'], (function (workbox) { 'use strict';
     "revision": "49bfbb394f0fe8f80bebcc6a5ef38d8d"
   }, {
     "url": "index.html",
-    "revision": "aed5ad7c73fe3597f2eece5f9a4a120b"
+    "revision": "df77df5030894b2ee324eecf539cecc4"
   }, {
     "url": "icon.svg",
     "revision": "6f5862cda0c04b3401bf6aae096cb7dd"
@@ -113,19 +113,19 @@ define(['./workbox-957bde9c'], (function (workbox) { 'use strict';
     "url": "assets/rolldown-runtime-WkwZ5CU-.js",
     "revision": null
   }, {
-    "url": "assets/react-vendor-C28zv8iy.js",
+    "url": "assets/react-vendor-CtQpQo29.js",
     "revision": null
   }, {
     "url": "assets/qr-engine-CXHAcuVq.js",
     "revision": null
   }, {
-    "url": "assets/lucide-icons-D78vOKzP.js",
+    "url": "assets/lucide-icons-D1DKKAmS.js",
     "revision": null
   }, {
-    "url": "assets/index-CLW8QNgQ.css",
+    "url": "assets/index-CtJM4XLa.js",
     "revision": null
   }, {
-    "url": "assets/index-BoX79oTS.js",
+    "url": "assets/index-2rFCov_5.css",
     "revision": null
   }, {
     "url": "assets/hero_farmland_dawn_1795261297830-Bl3SH4kv.jpg",
@@ -140,35 +140,26 @@ define(['./workbox-957bde9c'], (function (workbox) { 'use strict';
     "url": "assets/crop_potato_harvest_1795261297721-BkBA18R6.jpg",
     "revision": null
   }, {
-    "url": "assets/catalog-data-BBnO-LOF.js",
+    "url": "assets/catalog-data-D9I3GbQ7.js",
     "revision": null
   }, {
-    "url": "assets/VisitorCounter-DCZQYuG6.js",
+    "url": "assets/YieldAndPestIntelligenceSection-CVGIIx1F.js",
     "revision": null
   }, {
-    "url": "assets/OfflineSyncDrawer-CLfkNH1w.js",
+    "url": "assets/OfflineSyncDrawer-CnehtvUJ.js",
     "revision": null
   }, {
-    "url": "assets/MarketPricesSection-w0-KWcP-.js",
+    "url": "assets/DiseaseScannerSection-C5fuilPt.js",
     "revision": null
   }, {
-    "url": "assets/KnowledgeBaseSection-CuLPTlka.js",
+    "url": "assets/CropTipsSection-Bz3oZqA4.js",
     "revision": null
   }, {
-    "url": "assets/DiseaseScannerSection-DBbyfsF9.js",
+    "url": "assets/CropCalendarSection-y5rdD6JR.js",
     "revision": null
   }, {
-    "url": "assets/CropTipsSection-BJYYXEJJ.js",
+    "url": "assets/AgroServiceHubSection-D_ZT2AdA.js",
     "revision": null
-  }, {
-    "url": "assets/CropCalendarSection-BzvJRG5-.js",
-    "revision": null
-  }, {
-    "url": "assets/AgroServiceHubSection-NIX786TG.js",
-    "revision": null
-  }, {
-    "url": "data/krishi-knowledge-base.json",
-    "revision": "f23e4a4784ca828b61d8f78cad1ec4c5"
   }, {
     "url": "apple-touch-icon.png",
     "revision": "f5cc9cb2ad304274fce00cb1d37e117f"
@@ -186,7 +177,7 @@ define(['./workbox-957bde9c'], (function (workbox) { 'use strict';
     "revision": "d8c344708a237395504514092247b64f"
   }, {
     "url": "manifest.webmanifest",
-    "revision": "7044ea73998ab040a5a342ee88dee80c"
+    "revision": "3da17a0731e0c44ddb63831b2ef35c02"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
@@ -226,16 +217,6 @@ define(['./workbox-957bde9c'], (function (workbox) { 'use strict';
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 20,
       maxAgeSeconds: 43200
-    }), new workbox.CacheableResponsePlugin({
-      statuses: [0, 200]
-    })]
-  }), 'GET');
-  workbox.registerRoute(/\/api\/market-prices/i, new workbox.NetworkFirst({
-    "cacheName": "market-prices-cache",
-    "networkTimeoutSeconds": 4,
-    plugins: [new workbox.ExpirationPlugin({
-      maxEntries: 10,
-      maxAgeSeconds: 86400
     }), new workbox.CacheableResponsePlugin({
       statuses: [0, 200]
     })]

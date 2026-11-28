@@ -120,17 +120,17 @@ export function getTimeSlotFieldAdvisory(
       tasks: {
         bn: [
           'ধান, আলু ও টমেটো গাছের নিচের পাতায় ব্লাইট/ধ্বসার দাগ ও সাদামাছি পরীক্ষা করুন।',
-          'বাজারের জন্য শাকসবজি ভোরের ঠান্ডায় সংগ্রহ করলে সতেজ থাকে ও বেশি দাম পাওয়া যায়।',
+          'শাকসবজি ও ফল ভোরের ঠান্ডায় সংগ্রহ করলে দীর্ঘক্ষণ সতেজ ও পুষ্টিগুণ অটুট থাকে।',
           'রোদ বাড়ার আগেই হালকা সেচ দেওয়া শেষ করুন এবং শীতে সকাল ৯–১০টায় বীজতলার ঢাকা খুলুন।',
         ],
         hi: [
           'धान, आलू और टमाटर की निचली पत्तियों पर झुलसा रोग या कीट की जांच करें।',
-          'ताजी सब्जियों की तुड़ाई सुबह की ठंडक में करें ताकि बाजार में अच्छा भाव मिले।',
+          'ताजी सब्जियों की तुड़ाई सुबह की ठंडक में करें ताकि वे लंबे समय तक ताज़ी बनी रहें।',
           'धूप तेज होने से पहले सिंचाई पूरी करें और सर्दियों में नर्सरी का कवर हटाएं।',
         ],
         en: [
           'Inspect lower leaves of rice, potato, and tomato for early blight spots or aphids.',
-          'Harvest leafy greens and vegetables in cool morning air to keep market freshness longer.',
+          'Harvest leafy greens and vegetables in cool morning air to preserve freshness longer.',
           'Finish morning irrigation before heat rises and uncover cold-protected paddy nurseries.',
         ],
       },
@@ -212,28 +212,28 @@ export function getTimeSlotFieldAdvisory(
       slotTitle: {
         bn: 'সন্ধ্যা ও রাতের সুরক্ষা ও আগামীকালের প্রস্তুতি',
         hi: 'शाम व रात सुरक्षा और कल की तैयारी',
-        en: 'Evening Pest Traps, Frost Cover & Market Prep',
+        en: 'Evening Pest Traps, Frost Cover & Next-Day Prep',
       },
       focusSummary: {
         bn: 'সন্ধ্যার পর মাজরা/ফল ছিদ্রকারী পোকার মথ সক্রিয় হয়—ফাঁদ পরীক্ষা করুন ও শীতে বীজতলা ঢেকে রাখুন।',
         hi: 'शाम के बाद कीट पतंगे सक्रिय होते हैं—फेरोमोन व प्रकाश जाल जांचें और नर्सरी ढकें।',
-        en: 'Inspect pheromone/light traps at dusk, cover cold nurseries on chill nights, and review tomorrow’s weather & mandi rates.',
+        en: 'Inspect pheromone/light traps at dusk, cover cold nurseries on chill nights, and review tomorrow’s weather forecast.',
       },
       tasks: {
         bn: [
           'বেগুন, টমেটো ও ধানের জমিতে ফেরোমন ফাঁদ ও আলোক ফাঁদ সক্রিয় আছে কি না দেখুন।',
           'রাতের তাপমাত্রা ১২°সে. এর নিচে নামলে বোরো ধানের বীজতলা স্বচ্ছ পলিথিন দিয়ে ঢেকে দিন।',
-          'আগামী ৫ দিনের বৃষ্টির পূর্বাভাস ও কাছের হাটের বাজারদর মিলিয়ে ফসল বিক্রির পরিকল্পনা করুন।',
+          'আগামী ৫ দিনের বৃষ্টির পূর্বাভাস দেখে ফসল কাটা ও সংরক্ষণের পরিকল্পনা করুন।',
         ],
         hi: [
           'खेत में लगे फेरोमोन ट्रैप और प्रकाश जाल की जांच करें।',
           'रात का तापमान 12°C से कम हो तो धान नर्सरी को पॉलिथीन से सुरक्षित ढकें।',
-          'अगले 5 दिनों के मौसम और मंडी भाव देखकर कटाई व बिक्री की योजना बनाएं।',
+          'अगले 5 दिनों के मौसम का पूर्वानुमान देखकर कटाई व भंडारण की योजना बनाएं।',
         ],
         en: [
           'Check pheromone lures and light traps in brinjal, tomato, and paddy fields at dusk.',
           'Cover paddy nurseries with clear polythene if night lows drop near 12°C or below.',
-          'Review tomorrow’s rain forecast and nearest mandi prices before scheduling harvest transport.',
+          'Review tomorrow’s rain forecast before scheduling harvest and grain drying.',
         ],
       },
     },

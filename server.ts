@@ -10,9 +10,9 @@ dotenv.config();
 
 const PORT = Number(process.env.PORT) || 3000;
 const DATA_DIR = path.resolve(process.cwd(), 'data');
-const MARKET_FILE = path.resolve(DATA_DIR, 'market-updates.json');
 const FEEDBACK_FILE = path.resolve(DATA_DIR, 'farmer-feedback.json');
 const VISITORS_FILE = path.resolve(DATA_DIR, 'visitors.json');
+const PEST_REPORTS_FILE = path.resolve(DATA_DIR, 'pest-reports.json');
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -116,37 +116,6 @@ function stripJsonFences(text: string): string {
   return trimmed;
 }
 
-interface StoredMarketUpdate {
-  id: string;
-  cropId: string;
-  category: 'grain' | 'vegetable' | 'spice' | 'fruit';
-  cropNameBn: string;
-  cropNameHi: string;
-  cropNameEn: string;
-  marketName: string;
-  district: string;
-  pricePerKg: number;
-  pricePerMaund: number;
-  previousPricePerKg: number;
-  trend: 'up' | 'down' | 'stable';
-  currency: 'BDT' | 'INR';
-  updatedAt: string;
-  reportedBy: string;
-  sourceLabel?: string;
-  isLiveVerified?: boolean;
-}
-
-interface MarketSourceLink {
-  title: string;
-  uri: string;
-}
-
-interface MarketStorePayload {
-  updates: StoredMarketUpdate[];
-  lastAutoRefreshAt: string | null;
-  sources: MarketSourceLink[];
-}
-
 interface StoredFeedback {
   id: string;
   name: string;
@@ -158,6 +127,16 @@ interface StoredFeedback {
   language: string;
   lat?: number;
   lon?: number;
+  createdAt: string;
+}
+
+interface StoredPestObservation {
+  id: string;
+  districtName: string;
+  cropName: string;
+  pestName: string;
+  severity: 'early' | 'moderate' | 'severe';
+  note?: string;
   createdAt: string;
 }
 
@@ -745,332 +724,6 @@ Requirements:
     }
   });
 
-  const MARKET_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000;
-  const MARKET_SCHEDULER_POLL_MS = 30 * 60 * 1000;
-  const MARKET_QUOTA_BACKOFF_MS = 60 * 60 * 1000;
-  let marketRefreshInFlight: Promise<MarketStorePayload> | null = null;
-  let marketRefreshBackoffUntil = 0;
-
-  function readMarketStore(): MarketStorePayload {
-    const raw = safeReadJson<StoredMarketUpdate[] | Partial<MarketStorePayload>>(MARKET_FILE, {
-      updates: [],
-      lastAutoRefreshAt: null,
-      sources: [],
-    });
-    if (Array.isArray(raw)) {
-      return { updates: raw, lastAutoRefreshAt: null, sources: [] };
-    }
-    return {
-      updates: Array.isArray(raw.updates) ? raw.updates : [],
-      lastAutoRefreshAt: typeof raw.lastAutoRefreshAt === 'string' ? raw.lastAutoRefreshAt : null,
-      sources: Array.isArray(raw.sources) ? raw.sources : [],
-    };
-  }
-
-  function writeMarketStore(payload: MarketStorePayload): void {
-    safeWriteJson(MARKET_FILE, payload);
-  }
-
-  async function refreshLiveMarketPrices(districtHint = 'Dhaka'): Promise<MarketStorePayload> {
-    if (marketRefreshInFlight) {
-      return marketRefreshInFlight;
-    }
-
-    marketRefreshInFlight = (async () => {
-      const ai = getGeminiClient();
-      const todayIso = new Date().toISOString().slice(0, 10);
-      const prompt = `Search for the latest verified wholesale and retail agricultural crop market prices in Bangladesh (DAM Bangladesh dam.gov.bd / TCB / Dhaka Karwan Bazar / Bogura / Rajshahi / Jashore) and West Bengal Nadia as of ${todayIso}.
-STRICT UNIT RULE: Always convert to 1 kilogram (per-kg) rate ONLY (never return 40-kg maund or 100-kg quintal prices as pricePerKg).
-Return ONLY a valid JSON array (no markdown outside JSON) with realistic current per-kg prices for these exact cropId entries:
-1. "rice-br28" (Miniket / BR-28 Rice, category: "grain", currency: "BDT", market: "বগুড়া রাজাবাজার", district: "Bogura")
-2. "potato-diamond" (Diamond Potato, category: "vegetable", currency: "BDT", market: "জয়পুরহাট হাট", district: "Bogura")
-3. "tomato-local" (Ripe Local Tomato, category: "vegetable", currency: "BDT", market: "কুমিল্লা নিমসার বাজার", district: "Cumilla")
-4. "onion-desi" (Desi Red Onion, category: "spice", currency: "BDT", market: "ফরিদপুর কানাইপুর হাট", district: "Faridpur")
-5. "mustard-seed" (Mustard Seed, category: "grain", currency: "BDT", market: "রাজশাহী বানেশ্বর হাট", district: "Rajshahi")
-6. "chili-green" (Green Chili, category: "spice", currency: "BDT", market: "যশোর খাজুরা বাজার", district: "Jashore")
-7. "garlic-desi" (Desi Garlic, category: "spice", currency: "BDT", market: "নাটোর গুরুদাসপুর হাট", district: "Rajshahi")
-8. "lentil-masoor" (Red Lentil / Masoor Dal, category: "grain", currency: "BDT", market: "ঢাকা কারওয়ান বাজার", district: "Dhaka")
-9. "mango-himsagar" (Seasonal Mango / Local Fruit, category: "fruit", currency: "BDT", market: "চাঁপাইনবাবগঞ্জ কানসাট", district: "Rajshahi")
-10. "wheat-nadia" (Milling Wheat, category: "grain", currency: "INR", market: "কৃষ্ণনগর কৃষি মণ্ডী", district: "Nadia")
-
-District context requested: ${districtHint}.
-Each object in the JSON array MUST have:
-{
-  "cropId": string,
-  "category": "grain" | "vegetable" | "spice" | "fruit",
-  "cropNameBn": string,
-  "cropNameHi": string,
-  "cropNameEn": string,
-  "marketName": string,
-  "district": string,
-  "pricePerKg": number,
-  "currency": "BDT" | "INR"
-}`;
-
-      const marketModels = ['gemini-4-hydrogen', 'gemini-3.1-flash-lite'];
-      let response;
-      let lastMarketErr: unknown;
-      for (let i = 0; i < marketModels.length; i += 1) {
-        try {
-          response = await Promise.race([
-            ai.models.generateContent({
-              model: marketModels[i],
-              contents: prompt,
-              config: {
-                tools: [{ googleSearch: {} }],
-              },
-            }),
-            new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error('503_TIMEOUT: Live market lookup timed out.')), 24000)
-            ),
-          ]);
-          break;
-        } catch (err) {
-          lastMarketErr = err;
-          if (!isTransientCapacityError(err) || i === marketModels.length - 1) {
-            throw err;
-          }
-          await sleep(400);
-        }
-      }
-      if (!response) {
-        throw lastMarketErr ?? new Error('Live market lookup failed.');
-      }
-
-      const rawText = stripJsonFences(response.text ?? '[]');
-      const arrayMatch = rawText.match(/\[[\s\S]*\]/);
-      const jsonText = arrayMatch ? arrayMatch[0] : rawText;
-      const parsedList = JSON.parse(jsonText);
-      if (!Array.isArray(parsedList) || parsedList.length === 0) {
-        throw new Error('Could not parse live market prices from search output.');
-      }
-
-      const groundingChunks =
-        (response.candidates?.[0]?.groundingMetadata?.groundingChunks as
-          | Array<{ web?: { uri?: string; title?: string } }>
-          | undefined) ?? [];
-
-      const sources: MarketSourceLink[] = [];
-      const seenUris = new Set<string>();
-      for (const chunk of groundingChunks) {
-        const uri = chunk?.web?.uri;
-        const title = chunk?.web?.title;
-        if (typeof uri === 'string' && uri.startsWith('http') && !seenUris.has(uri)) {
-          seenUris.add(uri);
-          sources.push({ title: typeof title === 'string' && title ? title : uri, uri });
-        }
-        if (sources.length >= 4) break;
-      }
-
-      const currentStore = readMarketStore();
-      const existingByCropId = new Map(currentStore.updates.map((u) => [u.cropId, u]));
-      const nowIso = new Date().toISOString();
-      const validCategories = new Set(['grain', 'vegetable', 'spice', 'fruit']);
-
-      const refreshedEntries: StoredMarketUpdate[] = [];
-      for (const row of parsedList) {
-        if (!row || typeof row !== 'object') continue;
-        const cropId = String(row.cropId || '').trim().slice(0, 40);
-        const pricePerKg = Math.round(Number(row.pricePerKg) * 10) / 10;
-        if (!cropId || !Number.isFinite(pricePerKg) || pricePerKg < 5 || pricePerKg > 2500) continue;
-
-        const prev = existingByCropId.get(cropId);
-        const previousPricePerKg = prev ? prev.pricePerKg : pricePerKg;
-        const diffRatio = previousPricePerKg > 0 ? (pricePerKg - previousPricePerKg) / previousPricePerKg : 0;
-        const trend: 'up' | 'down' | 'stable' =
-          diffRatio >= 0.015 ? 'up' : diffRatio <= -0.015 ? 'down' : 'stable';
-
-        const category = validCategories.has(String(row.category))
-          ? (String(row.category) as StoredMarketUpdate['category'])
-          : prev?.category ?? 'vegetable';
-
-        refreshedEntries.push({
-          id: prev?.id ?? `mkt-${cropId}`,
-          cropId,
-          category,
-          cropNameBn: String(row.cropNameBn || prev?.cropNameBn || 'ফসল').slice(0, 60),
-          cropNameHi: String(row.cropNameHi || prev?.cropNameHi || 'फसल').slice(0, 60),
-          cropNameEn: String(row.cropNameEn || prev?.cropNameEn || 'Crop').slice(0, 60),
-          marketName: String(row.marketName || prev?.marketName || 'স্থানীয় বাজার').slice(0, 80),
-          district: String(row.district || prev?.district || 'Dhaka').slice(0, 50),
-          pricePerKg,
-          pricePerMaund: Math.round(pricePerKg * 40),
-          previousPricePerKg,
-          trend,
-          currency: row.currency === 'INR' ? 'INR' : 'BDT',
-          updatedAt: nowIso,
-          reportedBy: 'Live Market Sync',
-          sourceLabel: sources[0]?.title ?? 'DAM / Live Bazar Search',
-          isLiveVerified: true,
-        });
-      }
-
-      if (refreshedEntries.length === 0) {
-        throw new Error('No valid price entries returned from live lookup.');
-      }
-
-      const refreshedCropIds = new Set(refreshedEntries.map((e) => e.cropId));
-      const preservedCustom = currentStore.updates.filter((u) => !refreshedCropIds.has(u.cropId));
-      const mergedPayload: MarketStorePayload = {
-        updates: [...refreshedEntries, ...preservedCustom].slice(0, 120),
-        lastAutoRefreshAt: nowIso,
-        sources,
-      };
-      writeMarketStore(mergedPayload);
-      return mergedPayload;
-    })();
-
-    try {
-      return await marketRefreshInFlight;
-    } finally {
-      marketRefreshInFlight = null;
-    }
-  }
-
-  function maybeScheduleBackgroundMarketRefresh() {
-    if (!process.env.GEMINI_API_KEY) return;
-    if (Date.now() < marketRefreshBackoffUntil) return;
-    const store = readMarketStore();
-    const lastMs = store.lastAutoRefreshAt ? new Date(store.lastAutoRefreshAt).getTime() : 0;
-    if (!lastMs || Date.now() - lastMs > MARKET_REFRESH_INTERVAL_MS) {
-      refreshLiveMarketPrices('Dhaka').catch(() => {
-        // Back off silently on quota / transient upstream limits so cached prices continue serving cleanly
-        marketRefreshBackoffUntil = Date.now() + MARKET_QUOTA_BACKOFF_MS;
-      });
-    }
-  }
-
-  setInterval(() => {
-    maybeScheduleBackgroundMarketRefresh();
-  }, MARKET_SCHEDULER_POLL_MS);
-
-  setTimeout(() => {
-    maybeScheduleBackgroundMarketRefresh();
-  }, 8000);
-
-  app.get('/api/market-prices', (_req, res) => {
-    const store = readMarketStore();
-    maybeScheduleBackgroundMarketRefresh();
-    const lastMs = store.lastAutoRefreshAt ? new Date(store.lastAutoRefreshAt).getTime() : 0;
-    const nextScheduledRefreshAt = lastMs
-      ? new Date(lastMs + MARKET_REFRESH_INTERVAL_MS).toISOString()
-      : null;
-    res.json({
-      ...store,
-      nextScheduledRefreshAt,
-      refreshIntervalHours: 4,
-      refreshBackoffActive: Date.now() < marketRefreshBackoffUntil,
-    });
-  });
-
-  app.post('/api/market-prices', async (req, res) => {
-    const body = req.body ?? {};
-    if (body.action === 'refresh') {
-      try {
-        const district = typeof body.district === 'string' ? body.district.slice(0, 60) : 'Dhaka';
-        const payload = await refreshLiveMarketPrices(district);
-        marketRefreshBackoffUntil = 0;
-        res.json(payload);
-      } catch (err: unknown) {
-        if (isTransientCapacityError(err)) {
-          marketRefreshBackoffUntil = Date.now() + 30 * 60 * 1000;
-        }
-        const safeLang = ALLOWED_LANGS.has(body.language) ? body.language : 'bn';
-        const message = formatFriendlyGeminiError(err, safeLang);
-        res.status(isTransientCapacityError(err) ? 503 : 500).json({ error: message });
-      }
-      return;
-    }
-
-    const {
-      id: existingId,
-      cropId,
-      category,
-      cropNameBn,
-      cropNameHi,
-      cropNameEn,
-      marketName,
-      district,
-      pricePerKg,
-      previousPricePerKg: clientPrevPrice,
-      trend,
-      currency,
-      reportedBy,
-    } = body;
-
-    if (typeof marketName !== 'string' || marketName.trim().length < 2) {
-      res.status(400).json({ error: 'Market name is required.' });
-      return;
-    }
-    const numericPrice = Number(pricePerKg);
-    if (!Number.isFinite(numericPrice) || numericPrice <= 0 || numericPrice > 50000) {
-      res.status(400).json({ error: 'Valid price per kg is required.' });
-      return;
-    }
-
-    const store = readMarketStore();
-    const trimmedMarket = marketName.trim().slice(0, 80);
-    const safeCropId = String(cropId || 'custom').slice(0, 40);
-    const existingIdx = store.updates.findIndex(
-      (u) =>
-        (typeof existingId === 'string' && existingId && u.id === existingId) ||
-        (u.cropId === safeCropId && u.marketName.toLowerCase() === trimmedMarket.toLowerCase())
-    );
-    const prevEntry = existingIdx >= 0 ? store.updates[existingIdx] : undefined;
-    const roundedPrice = Math.round(numericPrice * 10) / 10;
-    const priorPrice =
-      prevEntry?.pricePerKg ??
-      (Number.isFinite(Number(clientPrevPrice)) && Number(clientPrevPrice) > 0
-        ? Math.round(Number(clientPrevPrice) * 10) / 10
-        : roundedPrice);
-
-    const computedTrend: 'up' | 'down' | 'stable' =
-      trend === 'up' || trend === 'down' || trend === 'stable'
-        ? trend
-        : roundedPrice > priorPrice
-        ? 'up'
-        : roundedPrice < priorPrice
-        ? 'down'
-        : 'stable';
-
-    const validCategories = new Set(['grain', 'vegetable', 'spice', 'fruit']);
-    const safeCategory = validCategories.has(category)
-      ? (category as StoredMarketUpdate['category'])
-      : prevEntry?.category ?? 'vegetable';
-    const safeCurrency = currency === 'INR' ? 'INR' : 'BDT';
-
-    const entry: StoredMarketUpdate = {
-      id:
-        (typeof existingId === 'string' && existingId) ||
-        prevEntry?.id ||
-        `mkt_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      cropId: safeCropId,
-      category: safeCategory,
-      cropNameBn: String(cropNameBn || prevEntry?.cropNameBn || cropNameEn || 'ফসল').slice(0, 60),
-      cropNameHi: String(cropNameHi || prevEntry?.cropNameHi || cropNameEn || 'फसल').slice(0, 60),
-      cropNameEn: String(cropNameEn || prevEntry?.cropNameEn || cropNameBn || 'Crop').slice(0, 60),
-      marketName: trimmedMarket,
-      district: String(district || prevEntry?.district || 'Local').slice(0, 50),
-      pricePerKg: roundedPrice,
-      pricePerMaund: Math.round(roundedPrice * 40),
-      previousPricePerKg: priorPrice,
-      trend: computedTrend,
-      currency: safeCurrency,
-      updatedAt: new Date().toISOString(),
-      reportedBy: String(reportedBy || 'Farmer / Market Report').slice(0, 60),
-      sourceLabel: 'Local Market Update',
-      isLiveVerified: false,
-    };
-
-    const filtered = store.updates.filter((u) => u.id !== entry.id);
-    const nextStore: MarketStorePayload = {
-      ...store,
-      updates: [entry, ...filtered].slice(0, 120),
-    };
-    writeMarketStore(nextStore);
-    res.status(201).json({ update: entry });
-  });
-
   app.get('/api/feedback', (_req, res) => {
     const items = safeReadJson<StoredFeedback[]>(FEEDBACK_FILE, []);
     res.json({ items });
@@ -1105,6 +758,607 @@ Each object in the JSON array MUST have:
     const next = [entry, ...existing].slice(0, 200);
     safeWriteJson(FEEDBACK_FILE, next);
     res.status(201).json({ item: entry });
+  });
+
+  // Multi-Stage Crop Yield Prediction Endpoint (Growth-Stage Photo + Field Analysis)
+  app.post('/api/yield-predict', async (req, res) => {
+    const ALLOWED_STAGES = new Set(['seedling', 'vegetative', 'flowering', 'grain_fill']);
+    const ALLOWED_UNITS = new Set(['bigha', 'decimal', 'acre', 'hectare']);
+    const STAGE_TITLES: Record<string, Record<string, string>> = {
+      seedling: { bn: '১. চারা / অঙ্কুরোদগম ধাপ', hi: '1. पौध / अंकुरण चरण', en: '1. Seedling Stage' },
+      vegetative: { bn: '২. বাড়ন্ত / কুঁশি ধাপ', hi: '2. बढ़वार / कल्ले चरण', en: '2. Vegetative Growth' },
+      flowering: { bn: '৩. ফুল ও শীষ বের হওয়া', hi: '3. फूल व बाली निकलना', en: '3. Flowering / Heading' },
+      grain_fill: { bn: '৪. দানা পুষ্ট ও পরিপক্বতা', hi: '4. दाना भराव व पकना', en: '4. Grain / Fruit Fill' },
+    };
+
+    const safeLang = ALLOWED_LANGS.has(req.body?.language) ? req.body.language : 'bn';
+
+    try {
+      const {
+        stages,
+        cropName = '',
+        variety = '',
+        landArea = 1,
+        landUnit = 'bigha',
+        soilType = 'loam',
+        irrigationLevel = 'adequate',
+        fertilizerRegime = 'balanced',
+        sowingDate = '',
+        weatherContext = null,
+      } = req.body ?? {};
+
+      if (!Array.isArray(stages) || stages.length === 0 || stages.length > 4) {
+        res.status(400).json({ error: 'Provide between 1 and 4 growth-stage photos for yield analysis.' });
+        return;
+      }
+
+      const validStages: { stageKey: string; imageBase64: string; mimeType: string; note: string }[] = [];
+      let totalBase64Bytes = 0;
+
+      for (const rawStage of stages) {
+        if (!rawStage || typeof rawStage !== 'object') {
+          res.status(400).json({ error: 'Invalid growth stage entry.' });
+          return;
+        }
+        const s = rawStage as Record<string, unknown>;
+        const stageKey = typeof s.stageKey === 'string' && ALLOWED_STAGES.has(s.stageKey) ? s.stageKey : '';
+        const imageBase64 = typeof s.imageBase64 === 'string' ? s.imageBase64.trim() : '';
+        const rawMime = typeof s.mimeType === 'string' ? s.mimeType.toLowerCase() : '';
+
+        if (!stageKey) {
+          res.status(400).json({ error: 'Invalid growth stage identifier.' });
+          return;
+        }
+        if (imageBase64.length < 100 || imageBase64.length > 4_000_000) {
+          res.status(400).json({ error: `Invalid image payload size for stage ${stageKey}.` });
+          return;
+        }
+        if (!ALLOWED_IMAGE_MIME.has(rawMime)) {
+          res.status(400).json({ error: 'Unsupported image format. Use JPEG, PNG, or WebP.' });
+          return;
+        }
+        totalBase64Bytes += imageBase64.length;
+        if (totalBase64Bytes > 5_800_000) {
+          res.status(400).json({ error: 'Combined image size exceeds upload limit. Please use smaller photos.' });
+          return;
+        }
+        validStages.push({
+          stageKey,
+          imageBase64,
+          mimeType: rawMime === 'image/jpg' ? 'image/jpeg' : rawMime,
+          note: typeof s.note === 'string' ? s.note.trim().slice(0, 140) : '',
+        });
+      }
+
+      const safeCrop = typeof cropName === 'string' ? cropName.trim().slice(0, 80) : '';
+      const safeVariety = typeof variety === 'string' ? variety.trim().slice(0, 80) : '';
+      const parsedArea = Number(landArea);
+      const safeArea = Number.isFinite(parsedArea) && parsedArea > 0 && parsedArea <= 10000 ? parsedArea : 1;
+      const safeUnit = typeof landUnit === 'string' && ALLOWED_UNITS.has(landUnit) ? landUnit : 'bigha';
+      const bighaEquivalent = Math.max(
+        0.03,
+        safeUnit === 'decimal'
+          ? safeArea / 33
+          : safeUnit === 'acre'
+          ? safeArea * 3.03
+          : safeUnit === 'hectare'
+          ? safeArea * 7.47
+          : safeArea
+      );
+
+      const safeSoil = typeof soilType === 'string' ? soilType.trim().slice(0, 50) : 'loam';
+      const safeIrrigation = typeof irrigationLevel === 'string' ? irrigationLevel.trim().slice(0, 50) : 'adequate';
+      const safeFertilizer = typeof fertilizerRegime === 'string' ? fertilizerRegime.trim().slice(0, 50) : 'balanced';
+      const safeSowingDate = typeof sowingDate === 'string' ? sowingDate.trim().slice(0, 30) : '';
+
+      const weatherSummary =
+        weatherContext && typeof weatherContext === 'object'
+          ? [
+              typeof weatherContext.districtName === 'string' ? `District: ${weatherContext.districtName}` : '',
+              typeof weatherContext.temperature === 'number' ? `Temp: ${weatherContext.temperature}°C` : '',
+              typeof weatherContext.humidity === 'number' ? `Humidity: ${weatherContext.humidity}%` : '',
+              typeof weatherContext.precipitation === 'number' ? `Rain: ${weatherContext.precipitation}mm` : '',
+            ]
+              .filter(Boolean)
+              .join(', ')
+          : '';
+
+      const languageLabel =
+        safeLang === 'bn'
+          ? 'Bengali (বাংলা) — use clear, practical Bangladeshi/West Bengal farmer terms (মণ, বিঘা, কেজি)'
+          : safeLang === 'hi'
+          ? 'Hindi (हिन्दी) — use clear Indian farmer terms (मन, बीघा, किलोग्राम)'
+          : 'English — clear agronomic terms with Kg per Bigha (33 decimals) and total Kg';
+
+      const ai = getGeminiClient();
+
+      const systemInstruction = `You are a Principal Agronomist and Quantitative Crop Yield Forecaster (BRRI/BARI/ICAR precision phenotyping specialist).
+Analyze the sequential crop growth-stage photographs provided by the farmer alongside plot and weather data.
+Evaluate plant stand density, leaf chlorophyll vigor, tiller/branch architecture, panicle/pod/fruit initiation, canopy gap stress, and biotic/abiotic defects at each stage.
+Calculate realistic yield projections per 1 Bigha (33 decimals / ~0.1338 hectare) AND total plot yield for ${bighaEquivalent.toFixed(2)} bighas (${safeArea} ${safeUnit}).
+All text fields must be written in ${languageLabel}. Respond strictly in valid JSON matching the schema.`;
+
+      const stageManifest = validStages
+        .map(
+          (st, idx) =>
+            `Image ${idx + 1} corresponds to stageKey="${st.stageKey}" (${STAGE_TITLES[st.stageKey]?.en ?? st.stageKey})${
+              st.note ? `. Farmer note: ${st.note}` : ''
+            }`
+        )
+        .join('\n');
+
+      const promptText = `Perform a multi-stage crop phenotyping & harvest yield forecast from these ${validStages.length} stage image(s):
+${stageManifest}
+
+Farm & Environment Context:
+- Crop: ${safeCrop || 'Identify crop visually from the photos'}
+${safeVariety ? `- Variety: ${safeVariety}` : ''}
+- Plot size: ${safeArea} ${safeUnit} (equivalent to ${bighaEquivalent.toFixed(2)} Bighas)
+- Soil type: ${safeSoil}
+- Irrigation regime: ${safeIrrigation}
+- Fertilizer practice: ${safeFertilizer}
+${safeSowingDate ? `- Sowing / Planting date: ${safeSowingDate}` : ''}
+${weatherSummary ? `- Local weather telemetry: ${weatherSummary}` : ''}
+
+Output rules:
+1. Return an entry in stagesAnalyzed for EACH uploaded stageKey in the exact order uploaded.
+2. Give realistic projectedYieldPerBighaKg adjusted cleanly for the crop health visible in the photos.
+3. Compute projectedTotalYieldKg = Math.round(projectedYieldPerBighaKg * ${bighaEquivalent.toFixed(2)}), plus realistic projectedYieldMinKg and projectedYieldMaxKg bounds.
+4. ConfidencePercent should reflect how many stages were supplied (1 stage ~55-70%, 2-3 stages ~72-85%, 4 stages ~86-94% if clear).
+5. Provide 3-4 yieldDrivers, 2-3 yieldBottlenecks, and 3-4 high-ROI boosterActionPlan steps before harvest.
+6. Provide a clear 3-sentence audioSummary speaking directly to the farmer about expected total harvest, confidence, and top yield-boosting step.`;
+
+      const parts: Array<{ inlineData: { mimeType: string; data: string } } | { text: string }> = [];
+      for (const st of validStages) {
+        parts.push({ inlineData: { mimeType: st.mimeType, data: st.imageBase64 } });
+      }
+      parts.push({ text: promptText });
+
+      const yieldSchema = {
+        type: Type.OBJECT,
+        properties: {
+          cropName: { type: Type.STRING },
+          stagesAnalyzed: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                stageKey: { type: Type.STRING },
+                stageLabel: { type: Type.STRING },
+                healthScore: { type: Type.INTEGER },
+                vigorStatus: { type: Type.STRING },
+                visualObservations: { type: Type.STRING },
+                stageRecommendation: { type: Type.STRING },
+              },
+              required: [
+                'stageKey',
+                'stageLabel',
+                'healthScore',
+                'vigorStatus',
+                'visualObservations',
+                'stageRecommendation',
+              ],
+            },
+          },
+          projectedYieldPerBighaKg: { type: Type.NUMBER },
+          projectedTotalYieldKg: { type: Type.NUMBER },
+          projectedYieldMinKg: { type: Type.NUMBER },
+          projectedYieldMaxKg: { type: Type.NUMBER },
+          yieldGrade: { type: Type.STRING },
+          confidencePercent: { type: Type.INTEGER },
+          estimatedHarvestWindow: { type: Type.STRING },
+          weatherImpactSummary: { type: Type.STRING },
+          yieldDrivers: { type: Type.ARRAY, items: { type: Type.STRING } },
+          yieldBottlenecks: { type: Type.ARRAY, items: { type: Type.STRING } },
+          boosterActionPlan: { type: Type.ARRAY, items: { type: Type.STRING } },
+          audioSummary: { type: Type.STRING },
+        },
+        required: [
+          'cropName',
+          'stagesAnalyzed',
+          'projectedYieldPerBighaKg',
+          'projectedTotalYieldKg',
+          'projectedYieldMinKg',
+          'projectedYieldMaxKg',
+          'yieldGrade',
+          'confidencePercent',
+          'estimatedHarvestWindow',
+          'weatherImpactSummary',
+          'yieldDrivers',
+          'yieldBottlenecks',
+          'boosterActionPlan',
+          'audioSummary',
+        ],
+      };
+
+      const attempts: { model: string; level: ThinkingLevel; timeoutMs: number; delayAfterMs: number }[] = [
+        { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 26000, delayAfterMs: 700 },
+        { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 18000, delayAfterMs: 0 },
+      ];
+
+      let response;
+      let lastErr: unknown;
+
+      for (let idx = 0; idx < attempts.length; idx += 1) {
+        const attempt = attempts[idx];
+        try {
+          response = await Promise.race([
+            ai.models.generateContent({
+              model: attempt.model,
+              contents: [{ role: 'user', parts }],
+              config: {
+                systemInstruction,
+                thinkingConfig: { thinkingLevel: attempt.level },
+                responseMimeType: 'application/json',
+                responseSchema: yieldSchema,
+              },
+            }),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('503_TIMEOUT: Model response timed out.')), attempt.timeoutMs)
+            ),
+          ]);
+          break;
+        } catch (err) {
+          lastErr = err;
+          const retryable =
+            isTransientCapacityError(err) ||
+            (err instanceof Error && err.message.includes('503_TIMEOUT'));
+          if (!retryable || idx === attempts.length - 1) {
+            throw err;
+          }
+          await sleep(attempt.delayAfterMs);
+        }
+      }
+
+      if (!response) {
+        throw lastErr ?? new Error('Failed to generate yield prediction.');
+      }
+
+      const parsed = safeParseDiagnosisJson(response.text ?? '{}');
+      const validGrades = new Set(['bumper', 'above_average', 'average', 'below_average', 'at_risk']);
+      const validVigor = new Set(['excellent', 'good', 'moderate', 'stressed']);
+
+      const perBighaRaw = Number(parsed.projectedYieldPerBighaKg);
+      const perBigha = Number.isFinite(perBighaRaw) && perBighaRaw > 0 ? Math.round(perBighaRaw) : 720;
+      const totalRaw = Number(parsed.projectedTotalYieldKg);
+      const totalYield =
+        Number.isFinite(totalRaw) && totalRaw > 0 ? Math.round(totalRaw) : Math.round(perBigha * bighaEquivalent);
+      const minRaw = Number(parsed.projectedYieldMinKg);
+      const maxRaw = Number(parsed.projectedYieldMaxKg);
+      const yieldMin =
+        Number.isFinite(minRaw) && minRaw > 0 ? Math.round(minRaw) : Math.round(totalYield * 0.88);
+      const yieldMax =
+        Number.isFinite(maxRaw) && maxRaw >= yieldMin ? Math.round(maxRaw) : Math.round(totalYield * 1.12);
+
+      const rawStages = Array.isArray(parsed.stagesAnalyzed) ? parsed.stagesAnalyzed : [];
+      const stagesAnalyzed = validStages.map((inputStage, idx) => {
+        const candidate =
+          (rawStages.find(
+            (item) =>
+              item &&
+              typeof item === 'object' &&
+              String((item as Record<string, unknown>).stageKey) === inputStage.stageKey
+          ) as Record<string, unknown> | undefined) ??
+          (rawStages[idx] as Record<string, unknown> | undefined) ??
+          {};
+        const vigorRaw = String(candidate.vigorStatus || '').toLowerCase();
+        return {
+          stageKey: inputStage.stageKey,
+          stageLabel:
+            typeof candidate.stageLabel === 'string' && candidate.stageLabel.trim()
+              ? candidate.stageLabel.trim()
+              : STAGE_TITLES[inputStage.stageKey]?.[safeLang] ?? inputStage.stageKey,
+          healthScore: Math.max(15, Math.min(100, Number(candidate.healthScore) || 76)),
+          vigorStatus: validVigor.has(vigorRaw) ? vigorRaw : 'good',
+          visualObservations: String(candidate.visualObservations || ''),
+          stageRecommendation: String(candidate.stageRecommendation || ''),
+        };
+      });
+
+      const gradeRaw = String(parsed.yieldGrade || '').toLowerCase();
+
+      res.json({
+        cropName: String(parsed.cropName || safeCrop || 'Crop'),
+        stagesAnalyzed,
+        projectedYieldPerBighaKg: perBigha,
+        projectedTotalYieldKg: totalYield,
+        projectedYieldMinKg: Math.min(yieldMin, totalYield),
+        projectedYieldMaxKg: Math.max(yieldMax, totalYield),
+        yieldGrade: validGrades.has(gradeRaw) ? gradeRaw : 'average',
+        confidencePercent: Math.max(
+          35,
+          Math.min(97, Number(parsed.confidencePercent) || Math.min(92, 56 + validStages.length * 9))
+        ),
+        estimatedHarvestWindow: String(parsed.estimatedHarvestWindow || ''),
+        weatherImpactSummary: String(parsed.weatherImpactSummary || ''),
+        yieldDrivers: normalizeStringArray(parsed.yieldDrivers),
+        yieldBottlenecks: normalizeStringArray(parsed.yieldBottlenecks),
+        boosterActionPlan: normalizeStringArray(parsed.boosterActionPlan),
+        audioSummary: String(parsed.audioSummary || '').trim(),
+      });
+    } catch (err: unknown) {
+      const message = formatFriendlyGeminiError(err, safeLang);
+      const rawMsg = err instanceof Error ? err.message : '';
+      const statusCode =
+        rawMsg.includes('429') || rawMsg.includes('RESOURCE_EXHAUSTED')
+          ? 429
+          : isTransientCapacityError(err)
+          ? 503
+          : 500;
+      res.status(statusCode).json({ error: message });
+    }
+  });
+
+  // Predictive Regional Pest Outbreak Surveillance Endpoints
+  app.get('/api/pest-radar', (_req, res) => {
+    const reports = safeReadJson<StoredPestObservation[]>(PEST_REPORTS_FILE, []);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ reports: reports.slice(0, 25) });
+  });
+
+  app.post('/api/pest-radar', async (req, res) => {
+    const ALLOWED_SEVERITY = new Set(['early', 'moderate', 'severe']);
+    const safeLang = ALLOWED_LANGS.has(req.body?.language) ? req.body.language : 'bn';
+
+    try {
+      const body = req.body ?? {};
+      const action = typeof body.action === 'string' ? body.action : 'predict';
+
+      if (action === 'report') {
+        const districtName = typeof body.districtName === 'string' ? body.districtName.trim().slice(0, 60) : '';
+        const cropName = typeof body.cropName === 'string' ? body.cropName.trim().slice(0, 60) : '';
+        const pestName = typeof body.pestName === 'string' ? body.pestName.trim().slice(0, 80) : '';
+        const severityRaw = typeof body.severity === 'string' ? body.severity : 'early';
+        const severity = ALLOWED_SEVERITY.has(severityRaw)
+          ? (severityRaw as 'early' | 'moderate' | 'severe')
+          : 'early';
+        const note = typeof body.note === 'string' ? body.note.trim().slice(0, 200) : '';
+
+        if (districtName.length < 2 || pestName.length < 2 || cropName.length < 2) {
+          res.status(400).json({ error: 'District, crop name, and pest observation are required.' });
+          return;
+        }
+
+        const entry: StoredPestObservation = {
+          id: `pr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          districtName,
+          cropName,
+          pestName,
+          severity,
+          note: note || undefined,
+          createdAt: new Date().toISOString(),
+        };
+        const existing = safeReadJson<StoredPestObservation[]>(PEST_REPORTS_FILE, []);
+        const updated = [entry, ...existing].slice(0, 150);
+        safeWriteJson(PEST_REPORTS_FILE, updated);
+        res.status(201).json({ report: entry, reports: updated.slice(0, 25) });
+        return;
+      }
+
+      const districtName =
+        typeof body.districtName === 'string' && body.districtName.trim()
+          ? body.districtName.trim().slice(0, 60)
+          : 'Dhaka';
+      const regionName = typeof body.regionName === 'string' ? body.regionName.trim().slice(0, 80) : '';
+      const cropFocus =
+        typeof body.cropFocus === 'string' && body.cropFocus.trim()
+          ? body.cropFocus.trim().slice(0, 80)
+          : 'Rice, Potato, Tomato & Vegetables';
+      const cropStage = typeof body.cropStage === 'string' ? body.cropStage.trim().slice(0, 50) : 'vegetative';
+      const soilMoisture = typeof body.soilMoisture === 'string' ? body.soilMoisture.trim().slice(0, 40) : 'moist';
+      const canopyDensity = typeof body.canopyDensity === 'string' ? body.canopyDensity.trim().slice(0, 40) : 'dense';
+      const recentScans = Array.isArray(body.recentLocalDiagnoses)
+        ? body.recentLocalDiagnoses
+            .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+            .slice(0, 8)
+            .map((s) => s.trim().slice(0, 80))
+        : [];
+      const fieldSignals = Array.isArray(body.fieldSignals)
+        ? body.fieldSignals
+            .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+            .slice(0, 8)
+            .map((s) => s.trim().slice(0, 60))
+        : [];
+
+      const weatherData =
+        body.weather && typeof body.weather === 'object' ? (body.weather as Record<string, unknown>) : null;
+      const forecastSummary = Array.isArray(weatherData?.forecast)
+        ? weatherData.forecast
+            .slice(0, 5)
+            .map((day) => {
+              const d = day as Record<string, unknown>;
+              return `${String(d.date ?? '')}: ${d.tempMin ?? '?'}–${d.tempMax ?? '?'}°C, rain ${d.rainMm ?? 0}mm (${d.rainProb ?? 0}%)`;
+            })
+            .join(' | ')
+        : '';
+
+      const allReports = safeReadJson<StoredPestObservation[]>(PEST_REPORTS_FILE, []);
+      const districtReports = allReports
+        .filter(
+          (r) =>
+            r.districtName.toLowerCase().includes(districtName.toLowerCase()) ||
+            (regionName && r.districtName.toLowerCase() === regionName.toLowerCase())
+        )
+        .slice(0, 12);
+
+      const communityReportsText =
+        districtReports.length > 0
+          ? districtReports.map((r) => `${r.cropName}: ${r.pestName} (${r.severity}) at ${r.districtName}`).join('; ')
+          : 'No community reports submitted yet; infer risk from weather trends, field moisture, canopy, and calendar month.';
+
+      const currentMonth = new Date().getMonth() + 1;
+      const languageLabel =
+        safeLang === 'bn'
+          ? 'Bengali (বাংলা) — farmer-friendly pest names, practical scouting tips, exact bio/chemical shield'
+          : safeLang === 'hi'
+          ? 'Hindi (हिन्दी) — farmer-friendly pest names, scouting cues, exact preventive shield'
+          : 'English — clear South Asian agricultural pest names and preventive guidance';
+
+      const ai = getGeminiClient();
+
+      const systemInstruction = `You are a Regional Plant Epidemiologist and Predictive Pest Surveillance Director (DAE/BARI/BRRI/ICAR Early Warning System).
+Analyze hyper-local meteorological trends (temperature, humidity, rainfall forecast), soil moisture, canopy density, local crop stage, recent device scan signals, and community scouting reports to forecast regional pest and disease outbreaks 5 to 14 days BEFORE epidemic spread.
+Respond strictly in valid JSON following the schema. All descriptive strings must be in ${languageLabel}.`;
+
+      const promptText = `Run a predictive regional pest & disease outbreak analysis for:
+- District / Zone: ${districtName}${regionName ? ` (${regionName})` : ''}
+- Current Calendar Month: ${currentMonth}
+- Primary Crops Monitored: ${cropFocus}
+- Predominant Field Stage: ${cropStage}
+- Local Soil Moisture Status: ${soilMoisture}
+- Crop Canopy Density: ${canopyDensity}
+- Current Weather: ${
+        weatherData
+          ? `Temp ${weatherData.temperature ?? 'N/A'}°C, Humidity ${weatherData.humidity ?? 'N/A'}%, Wind ${weatherData.windSpeed ?? 'N/A'} km/h, Rain ${weatherData.precipitation ?? 0} mm`
+          : 'Moderate humid subtropical agro-climate'
+      }
+- 5-Day Weather Forecast: ${forecastSummary || 'Unavailable'}
+- Local Farmer Field Signals Observed: ${fieldSignals.length > 0 ? fieldSignals.join(', ') : 'Routine preventive monitoring'}
+- Recent Local Leaf Scanner Detections on Device: ${recentScans.length > 0 ? recentScans.join(', ') : 'None'}
+- Regional Scouting Reports: ${communityReportsText}
+
+Predict 3 to 4 highest-probability pest/pathogen threats over the next 5–14 days, ranked from highest riskPercent to lowest.
+Include early scouting indicators and exact preventive interventions BEFORE economic threshold level (ETL) is crossed.
+Write a crisp 3-sentence audioSummary warning the farmer about the top regional outbreak threat and immediate preventive action.`;
+
+      const radarSchema = {
+        type: Type.OBJECT,
+        properties: {
+          overallRiskLevel: { type: Type.STRING },
+          overallRiskScore: { type: Type.INTEGER },
+          outbreakWindowDays: { type: Type.INTEGER },
+          weatherTriggerSummary: { type: Type.STRING },
+          regionalScoutingSummary: { type: Type.STRING },
+          predictedOutbreaks: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                pestName: { type: Type.STRING },
+                scientificName: { type: Type.STRING },
+                targetCrops: { type: Type.ARRAY, items: { type: Type.STRING } },
+                riskPercent: { type: Type.INTEGER },
+                riskLevel: { type: Type.STRING },
+                onsetWindow: { type: Type.STRING },
+                earlyWarningSignals: { type: Type.ARRAY, items: { type: Type.STRING } },
+                preventiveShield: { type: Type.STRING },
+                affectedRadiusNote: { type: Type.STRING },
+              },
+              required: [
+                'pestName',
+                'scientificName',
+                'targetCrops',
+                'riskPercent',
+                'riskLevel',
+                'onsetWindow',
+                'earlyWarningSignals',
+                'preventiveShield',
+                'affectedRadiusNote',
+              ],
+            },
+          },
+          audioSummary: { type: Type.STRING },
+        },
+        required: [
+          'overallRiskLevel',
+          'overallRiskScore',
+          'outbreakWindowDays',
+          'weatherTriggerSummary',
+          'regionalScoutingSummary',
+          'predictedOutbreaks',
+          'audioSummary',
+        ],
+      };
+
+      const attempts: { model: string; level: ThinkingLevel; timeoutMs: number; delayAfterMs: number }[] = [
+        { model: 'gemini-4-hydrogen', level: ThinkingLevel.LOW, timeoutMs: 24000, delayAfterMs: 700 },
+        { model: 'gemini-3.1-flash-lite', level: ThinkingLevel.MINIMAL, timeoutMs: 18000, delayAfterMs: 0 },
+      ];
+
+      let response;
+      let lastErr: unknown;
+
+      for (let idx = 0; idx < attempts.length; idx += 1) {
+        const attempt = attempts[idx];
+        try {
+          response = await Promise.race([
+            ai.models.generateContent({
+              model: attempt.model,
+              contents: [{ role: 'user', parts: [{ text: promptText }] }],
+              config: {
+                systemInstruction,
+                thinkingConfig: { thinkingLevel: attempt.level },
+                responseMimeType: 'application/json',
+                responseSchema: radarSchema,
+              },
+            }),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('503_TIMEOUT: Model response timed out.')), attempt.timeoutMs)
+            ),
+          ]);
+          break;
+        } catch (err) {
+          lastErr = err;
+          const retryable =
+            isTransientCapacityError(err) ||
+            (err instanceof Error && err.message.includes('503_TIMEOUT'));
+          if (!retryable || idx === attempts.length - 1) {
+            throw err;
+          }
+          await sleep(attempt.delayAfterMs);
+        }
+      }
+
+      if (!response) {
+        throw lastErr ?? new Error('Failed to generate pest outbreak forecast.');
+      }
+
+      const parsed = safeParseDiagnosisJson(response.text ?? '{}');
+      const validRisks = new Set(['low', 'moderate', 'high', 'critical']);
+      const rawOutbreaks = Array.isArray(parsed.predictedOutbreaks) ? parsed.predictedOutbreaks : [];
+
+      const predictedOutbreaks = rawOutbreaks.slice(0, 4).map((item) => {
+        const row = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>;
+        const rLevel = String(row.riskLevel || '').toLowerCase();
+        return {
+          pestName: String(row.pestName || ''),
+          scientificName: String(row.scientificName || ''),
+          targetCrops: normalizeStringArray(row.targetCrops),
+          riskPercent: Math.max(5, Math.min(99, Number(row.riskPercent) || 55)),
+          riskLevel: validRisks.has(rLevel) ? rLevel : 'moderate',
+          onsetWindow: String(row.onsetWindow || ''),
+          earlyWarningSignals: normalizeStringArray(row.earlyWarningSignals),
+          preventiveShield: String(row.preventiveShield || ''),
+          affectedRadiusNote: String(row.affectedRadiusNote || ''),
+        };
+      });
+
+      const overallLevelRaw = String(parsed.overallRiskLevel || '').toLowerCase();
+
+      res.json({
+        districtName,
+        cropFocus,
+        overallRiskLevel: validRisks.has(overallLevelRaw) ? overallLevelRaw : 'moderate',
+        overallRiskScore: Math.max(5, Math.min(100, Number(parsed.overallRiskScore) || 58)),
+        outbreakWindowDays: Math.max(3, Math.min(21, Number(parsed.outbreakWindowDays) || 7)),
+        weatherTriggerSummary: String(parsed.weatherTriggerSummary || ''),
+        regionalScoutingSummary: String(parsed.regionalScoutingSummary || ''),
+        communitySignalCount: districtReports.length + recentScans.length,
+        predictedOutbreaks,
+        recentReports: allReports.slice(0, 12),
+        audioSummary: String(parsed.audioSummary || '').trim(),
+      });
+    } catch (err: unknown) {
+      const message = formatFriendlyGeminiError(err, safeLang);
+      const rawMsg = err instanceof Error ? err.message : '';
+      const statusCode =
+        rawMsg.includes('429') || rawMsg.includes('RESOURCE_EXHAUSTED')
+          ? 429
+          : isTransientCapacityError(err)
+          ? 503
+          : 500;
+      res.status(statusCode).json({ error: message });
+    }
   });
 
   if (process.env.NODE_ENV !== 'production') {

@@ -1,11 +1,11 @@
 import {
   DiseaseDiagnosis,
-  MarketPrice,
-  MarketSourceLink,
   OfflinePendingScan,
   OfflineStorageHealth,
   OfflineSyncSummary,
+  RegionalPestRadarResult,
   WeatherCacheRecord,
+  YieldPredictionRecord,
 } from '../types/agri';
 import {
   clearAudioCache,
@@ -15,16 +15,13 @@ import {
   exportAllOfflineData,
   getCropTips,
   getDiagnoses,
-  getMarketPrices,
-  getMarketSyncMeta,
   getPendingScans,
-  mergeServerMarketPrices,
+  saveCachedPestRadar,
   saveDiagnosis,
   saveLastOfflineSyncAt,
   saveManyDiagnoses,
   saveManyPendingScans,
-  saveMarketPrice,
-  saveMarketSyncMeta,
+  saveManyYieldPredictions,
   savePendingScan,
   saveWeatherCache,
   setCropTipsBulk,
@@ -187,61 +184,30 @@ export async function runFullOfflineSync(options?: {
   weather?: WeatherCacheRecord | null;
 }): Promise<
   OfflineSyncSummary & {
-    prices: MarketPrice[];
     diagnoses: DiseaseDiagnosis[];
     pendingScans: OfflinePendingScan[];
-    sources?: MarketSourceLink[];
   }
 > {
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
-    const [prices, diagnoses, pendingScans] = await Promise.all([
-      getMarketPrices(),
+    const [diagnoses, pendingScans] = await Promise.all([
       getDiagnoses(),
       getPendingScans(),
     ]);
     return {
       lastSyncAt: null,
-      syncedPrices: 0,
       processedScans: 0,
       failedScans: 0,
       status: 'offline',
-      prices,
       diagnoses,
       pendingScans,
     };
   }
 
-  let syncedPrices = 0;
   let processedScans = 0;
   let failedScans = 0;
-  let latestSources: MarketSourceLink[] | undefined;
 
   try {
-    const pushRes = await syncPendingOfflineRecords();
-    syncedPrices = pushRes.syncedPrices;
-
-    // Pull latest server market prices without triggering forced AI quota calls
-    try {
-      const mktRes = await fetch('/api/market-prices');
-      if (mktRes.ok) {
-        const data = await mktRes.json();
-        if (Array.isArray(data.updates) && data.updates.length > 0) {
-          await mergeServerMarketPrices(data.updates);
-        }
-        const savedMeta = await getMarketSyncMeta();
-        const resolvedSources: MarketSourceLink[] = Array.isArray(data.sources)
-          ? (data.sources as MarketSourceLink[])
-          : savedMeta.sources;
-        latestSources = resolvedSources;
-        await saveMarketSyncMeta({
-          lastSyncAt:
-            typeof data.lastAutoRefreshAt === 'string' ? data.lastAutoRefreshAt : savedMeta.lastSyncAt,
-          sources: resolvedSources,
-        });
-      }
-    } catch {
-      // Non-fatal on static hosting
-    }
+    await syncPendingOfflineRecords();
 
     if (options?.processScans) {
       const queue = await getPendingScans();
@@ -261,36 +227,29 @@ export async function runFullOfflineSync(options?: {
     const nowIso = new Date().toISOString();
     await saveLastOfflineSyncAt(nowIso);
 
-    const [prices, diagnoses, pendingScans] = await Promise.all([
-      getMarketPrices(),
+    const [diagnoses, pendingScans] = await Promise.all([
       getDiagnoses(),
       getPendingScans(),
     ]);
 
     return {
       lastSyncAt: nowIso,
-      syncedPrices,
       processedScans,
       failedScans,
       status: failedScans > 0 ? 'partial' : 'synced',
-      prices,
       diagnoses,
       pendingScans,
-      sources: latestSources,
     };
   } catch {
-    const [prices, diagnoses, pendingScans] = await Promise.all([
-      getMarketPrices(),
+    const [diagnoses, pendingScans] = await Promise.all([
       getDiagnoses(),
       getPendingScans(),
     ]);
     return {
       lastSyncAt: null,
-      syncedPrices,
       processedScans,
       failedScans,
       status: 'error',
-      prices,
       diagnoses,
       pendingScans,
     };
@@ -303,8 +262,8 @@ export async function exportOfflineBackupJson(): Promise<string> {
 
 export async function importOfflineBackupJson(rawText: string): Promise<{
   importedBookmarks: number;
-  importedPrices: number;
   importedDiagnoses: number;
+  importedYieldPredictions: number;
   importedPendingScans: number;
   restoredWeather: boolean;
 }> {
@@ -314,8 +273,8 @@ export async function importOfflineBackupJson(rawText: string): Promise<{
   }
 
   let importedBookmarks = 0;
-  let importedPrices = 0;
   let importedDiagnoses = 0;
+  let importedYieldPredictions = 0;
   let importedPendingScans = 0;
   let restoredWeather = false;
 
@@ -332,22 +291,6 @@ export async function importOfflineBackupJson(rawText: string): Promise<{
       );
       await setCropTipsBulk(mergedTips);
       importedBookmarks = bookmarkedIds.size;
-    }
-  }
-
-  if (Array.isArray(parsed.marketPrices)) {
-    for (const row of parsed.marketPrices.slice(0, 120)) {
-      if (
-        row &&
-        typeof row === 'object' &&
-        typeof (row as MarketPrice).cropId === 'string' &&
-        typeof (row as MarketPrice).marketName === 'string' &&
-        typeof (row as MarketPrice).pricePerKg === 'number' &&
-        Number.isFinite((row as MarketPrice).pricePerKg)
-      ) {
-        await saveMarketPrice(row as MarketPrice);
-        importedPrices += 1;
-      }
     }
   }
 
@@ -391,6 +334,34 @@ export async function importOfflineBackupJson(rawText: string): Promise<{
     }
   }
 
+  if (Array.isArray(parsed.yieldPredictions)) {
+    const validYields = parsed.yieldPredictions
+      .filter(
+        (y: unknown): y is YieldPredictionRecord =>
+          Boolean(
+            y &&
+              typeof y === 'object' &&
+              typeof (y as YieldPredictionRecord).id === 'string' &&
+              typeof (y as YieldPredictionRecord).cropName === 'string' &&
+              typeof (y as YieldPredictionRecord).projectedTotalYieldKg === 'number'
+          )
+      )
+      .slice(0, 40);
+    if (validYields.length > 0) {
+      await saveManyYieldPredictions(validYields);
+      importedYieldPredictions = validYields.length;
+    }
+  }
+
+  if (
+    parsed.pestRadar &&
+    typeof parsed.pestRadar === 'object' &&
+    typeof (parsed.pestRadar as RegionalPestRadarResult).districtName === 'string' &&
+    Array.isArray((parsed.pestRadar as RegionalPestRadarResult).predictedOutbreaks)
+  ) {
+    await saveCachedPestRadar(parsed.pestRadar as RegionalPestRadarResult);
+  }
+
   if (
     parsed.weather &&
     typeof parsed.weather === 'object' &&
@@ -403,8 +374,8 @@ export async function importOfflineBackupJson(rawText: string): Promise<{
 
   return {
     importedBookmarks,
-    importedPrices,
     importedDiagnoses,
+    importedYieldPredictions,
     importedPendingScans,
     restoredWeather,
   };

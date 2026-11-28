@@ -28,8 +28,8 @@ export type Translations = {
     weather: string;
     calendar: string;
     scanner: string;
+    yieldRadar: string;
     tips: string;
-    market: string;
     feedback: string;
   };
   home: {
@@ -44,12 +44,12 @@ export type Translations = {
     airQualityLabel: string;
     scanTitle: string;
     scanDesc: string;
+    yieldRadarTitle: string;
+    yieldRadarDesc: string;
     weatherTitle: string;
     weatherDesc: string;
     calendarTitle: string;
     calendarDesc: string;
-    marketTitle: string;
-    marketDesc: string;
     tipsTitle: string;
     tipsDesc: string;
     feedbackTitle: string;
@@ -189,48 +189,6 @@ export type Translations = {
     bookmarkSaved: string;
     noTipsMatch: string;
   };
-  market: {
-    sectionTitle: string;
-    sectionSubtitle: string;
-    searchPlaceholder: string;
-    allCategories: string;
-    categories: {
-      all: string;
-      grain: string;
-      vegetable: string;
-      spice: string;
-      fruit: string;
-    };
-    perKg: string;
-    perMaund: string;
-    trendUp: string;
-    trendDown: string;
-    trendStable: string;
-    listenMarket: string;
-    refreshLiveBtn: string;
-    refreshingLive: string;
-    lastMarketSyncLabel: string;
-    autoSyncNote: string;
-    verifiedLiveBadge: string;
-    farmerReportBadge: string;
-    sourcesTitle: string;
-    quickUpdateBtn: string;
-    editingPriceTitle: string;
-    addNewPriceTitle: string;
-    reportPriceBtn: string;
-    closeForm: string;
-    cropNameLabel: string;
-    marketNameLabel: string;
-    priceKgLabel: string;
-    currencyLabel: string;
-    trendLabel: string;
-    submitPrice: string;
-    pendingSyncTag: string;
-    syncedTag: string;
-    updateSuccessMsg: string;
-    refreshSuccessMsg: string;
-    refreshErrorMsg: string;
-  };
   feedback: {
     sectionTitle: string;
     sectionSubtitle: string;
@@ -250,7 +208,6 @@ export type Translations = {
     categories: {
       disease: string;
       weather: string;
-      market: string;
       suggestion: string;
     };
   };
@@ -270,10 +227,9 @@ export type Translations = {
     storageOverviewTitle: string;
     storageUsedLabel: string;
     tipsCount: string;
-    marketCount: string;
     diagnosesCount: string;
+    yieldPredictionsCount: string;
     pendingScansCount: string;
-    pendingPricesCount: string;
     pendingCount: string;
     weatherCached: string;
     audioCached: string;
@@ -411,7 +367,7 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
     "brandName": "কৃষি মিত্র",
     "heroEyebrow": "আপনার সহজ কৃষি সহায়ক",
     "heroTitle": "আসসালামু আলাইকুম! আজকের আবহাওয়া ও ফসলের সমাধান",
-    "heroSubtitle": "আবহাওয়া, ফসলের রোগ পরীক্ষা, কখন লাগাবেন-তুলবেন ও বাজার দর—সব কিছু সহজ বাংলায় শুনুন ও দেখুন।",
+    "heroSubtitle": "আবহাওয়া, ফসলের রোগ পরীক্ষা, কখন লাগাবেন-তুলবেন ও চাষের পরামর্শ—সব কিছু সহজ বাংলায় শুনুন ও দেখুন।",
     "heroPrimaryCta": "ছবি তুলে রোগ দেখুন",
     "heroSecondaryCta": "আজকের খবর শুনুন",
     "nav": {
@@ -419,8 +375,8 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "weather": "আবহাওয়া",
       "calendar": "ফসল সময়",
       "scanner": "রোগ স্ক্যান",
+      "yieldRadar": "ফলন ও বালাই রাডার",
       "tips": "চাষের টিপস",
-      "market": "বাজার দর",
       "feedback": "যোগাযোগ"
     },
     "home": {
@@ -435,12 +391,12 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "airQualityLabel": "বাতাসের মান",
       "scanTitle": "পাতার রোগ পরীক্ষা",
       "scanDesc": "আক্রান্ত পাতার ছবি দিন—রোগ ও ওষুধ জানুন",
+      "yieldRadarTitle": "এআই ফলন পূর্বাভাস ও বালাই রাডার",
+      "yieldRadarDesc": "ধাপভিত্তিক ছবিতে ফলন হিসাব ও আঞ্চলিক বালাই আগাম সতর্কতা",
       "weatherTitle": "আবহাওয়া ও ঝড়-বৃষ্টি",
       "weatherDesc": "আজ ও ৫ দিনের বৃষ্টি, তাপমাত্রা ও সতর্কতা",
       "calendarTitle": "কখন লাগাবেন ও তুলবেন",
       "calendarDesc": "মাস অনুযায়ী ফসল রোপণ ও কাটার তারিখ জানুন",
-      "marketTitle": "আজকের বাজার দর",
-      "marketDesc": "ধান, আলু, পেঁয়াজ ও সবজির কেজি ও মণ দাম",
       "tipsTitle": "চাষ ও সারের নিয়ম",
       "tipsDesc": "বিঘা প্রতি সার, বীজ ও সেচের সহজ নির্দেশনা",
       "feedbackTitle": "প্রশ্ন ও যোগাযোগ",
@@ -587,48 +543,6 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "bookmarkSaved": "সংরক্ষিত",
       "noTipsMatch": "আপনার খোঁজের সাথে কোনো টিপস মেলেনি।"
     },
-    "market": {
-      "sectionTitle": "নিয়মিত লাইভ বাজার দর ও আপডেট",
-      "sectionSubtitle": "আঞ্চলিক হাট ও বাজারের প্রতি কেজি ও প্রতি মণ (৪০ কেজি) হালনাগাদ দর। এক ক্লিকে আজকের লাইভ দর আনুন বা স্থানীয় দর আপডেট করুন।",
-      "searchPlaceholder": "ফসল বা বাজারের নাম লিখুন...",
-      "allCategories": "সব পণ্য",
-      "categories": {
-        "all": "সব",
-        "grain": "শস্য ও ডাল",
-        "vegetable": "সবজি",
-        "spice": "মসলা",
-        "fruit": "ফল"
-      },
-      "perKg": "প্রতি কেজি",
-      "perMaund": "প্রতি মণ (৪০ কেজি)",
-      "trendUp": "দাম বেড়েছে",
-      "trendDown": "দাম কমেছে",
-      "trendStable": "স্থিতিশীল",
-      "listenMarket": "বাজার দর শুনুন",
-      "refreshLiveBtn": "আজকের লাইভ দর আপডেট",
-      "refreshingLive": "লাইভ দর আনা হচ্ছে...",
-      "lastMarketSyncLabel": "সর্বশেষ বাজার আপডেট",
-      "autoSyncNote": "নিয়মিত স্বয়ংক্রিয় দর সিঙ্ক চালু আছে",
-      "verifiedLiveBadge": "লাইভ যাচাইকৃত",
-      "farmerReportBadge": "স্থানীয় রিপোর্ট",
-      "sourcesTitle": "তথ্যসূত্র",
-      "quickUpdateBtn": "দর বদলান",
-      "editingPriceTitle": "এই ফসলের আজকের দর আপডেট করুন",
-      "addNewPriceTitle": "নতুন ফসল বা বাজারের দর যোগ করুন",
-      "reportPriceBtn": "নতুন দর যোগ করুন",
-      "closeForm": "ফর্ম বন্ধ করুন",
-      "cropNameLabel": "ফসলের নাম",
-      "marketNameLabel": "বাজার / হাটের নাম",
-      "priceKgLabel": "দাম (প্রতি কেজি)",
-      "currencyLabel": "মুদ্রা",
-      "trendLabel": "বাজার প্রবণতা",
-      "submitPrice": "দর আপডেট সংরক্ষণ করুন",
-      "pendingSyncTag": "সিঙ্কের অপেক্ষায় (অফলাইন)",
-      "syncedTag": "সিঙ্ক সম্পন্ন",
-      "updateSuccessMsg": "আজকের বাজার দর সফলভাবে আপডেট হয়েছে।",
-      "refreshSuccessMsg": "আজকের সর্বশেষ বাজার দর আপডেট করা হয়েছে।",
-      "refreshErrorMsg": "এই মুহূর্তে লাইভ বাজার দর আনা যায়নি; ফোনে সংরক্ষিত সর্বশেষ দর দেখানো হচ্ছে।"
-    },
     "feedback": {
       "sectionTitle": "কৃষক যোগাযোগ ও পরামর্শ ফর্ম",
       "sectionSubtitle": "ফসলের সমস্যা, প্রশ্ন বা মতামত পাঠান। অফলাইনে জমা দিলে নেট পাওয়া মাত্র স্বয়ংক্রিয়ভাবে পৌঁছে যাবে।",
@@ -648,7 +562,6 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "categories": {
         "disease": "রোগ ও পোকামাকড়",
         "weather": "আবহাওয়া ও সেচ",
-        "market": "বাজার দর",
         "suggestion": "অ্যাপ পরামর্শ"
       }
     },
@@ -664,14 +577,13 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
     },
     "offlineDrawer": {
       "title": "অফলাইন ডাটা ম্যানেজমেন্ট ও সিঙ্ক",
-      "subtitle": "ইন্টারনেট ছাড়াও আপনার সব ফসল তথ্য, স্ক্যান ও বাজার দর সহজ ৩টি ধাপে পরিচালনা করুন।",
+      "subtitle": "ইন্টারনেট ছাড়াও আপনার সব ফসল তথ্য, রোগ স্ক্যান ও আবহাওয়া ক্যাশ সহজ ৩টি ধাপে পরিচালনা করুন।",
       "storageOverviewTitle": "১. ফোনের স্টোরেজ ও জমার হিসাব",
       "storageUsedLabel": "ব্যবহৃত জায়গা",
       "tipsCount": "চাষের টিপস",
-      "marketCount": "বাজার দরের তালিকা",
       "diagnosesCount": "রোগ পরীক্ষার রিপোর্ট",
+      "yieldPredictionsCount": "সংরক্ষিত ফলন পূর্বাভাস",
       "pendingScansCount": "অপেক্ষমান অফলাইন স্ক্যান",
-      "pendingPricesCount": "সিঙ্ক বাকি বাজার দর",
       "pendingCount": "মোট সিঙ্কের অপেক্ষায়",
       "weatherCached": "আবহাওয়ার তথ্য",
       "audioCached": "সংরক্ষিত অডিও",
@@ -702,7 +614,7 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "evening": "শুভ সন্ধ্যা! আসসালামু আলাইকুম",
       "night": "শুভ রাত্রি! আসসালামু আলাইকুম",
       "firstVisitBadge": "প্রথম আগমনে স্বাগতম",
-      "firstVisitMessage": "কৃষি মিত্রে আপনাকে আন্তরিক স্বাগতম! আজকের আবহাওয়া, ফসলের রোগ পরীক্ষা, রোপণ সময় ও বাজার দর এক জায়গায় দেখে নিন।",
+      "firstVisitMessage": "কৃষি মিত্রে আপনাকে আন্তরিক স্বাগতম! আজকের আবহাওয়া, ফসলের রোগ পরীক্ষা, রোপণ সময় ও চাষের পরামর্শ এক জায়গায় দেখে নিন।",
       "returningMessage": "কৃষি মিত্রে আবারও স্বাগতম! আপনার খামারের জন্য আজকের আবহাওয়া ও ফসলের হালনাগাদ তথ্য প্রস্তুত আছে।",
       "visitOrdinalPrefix": "আপনার",
       "visitOrdinalSuffix": "-তম ভিজিট",
@@ -818,7 +730,7 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
     "brandName": "कृषि मित्र",
     "heroEyebrow": "आपका आसान कृषि सहायक",
     "heroTitle": "अस्सलामु अलैकुम! आज का मौसम और फसल समाधान",
-    "heroSubtitle": "मौसम, पत्ती रोग जांच, बुवाई-कटाई का सही समय और मंडी भाव—सब कुछ सरल भाषा में देखें और सुनें।",
+    "heroSubtitle": "मौसम, पत्ती रोग जांच, बुवाई-कटाई का सही समय और खेती सलाह—सब कुछ सरल भाषा में देखें और सुनें।",
     "heroPrimaryCta": "फोटो से रोग जांचें",
     "heroSecondaryCta": "आज की जानकारी सुनें",
     "nav": {
@@ -826,8 +738,8 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "weather": "मौसम",
       "calendar": "फसल समय",
       "scanner": "रोग स्कैन",
+      "yieldRadar": "उपज व कीट रडार",
       "tips": "फसल टिप्स",
-      "market": "मंडी भाव",
       "feedback": "संपर्क"
     },
     "home": {
@@ -842,12 +754,12 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "airQualityLabel": "हवा की गुणवत्ता",
       "scanTitle": "पत्ती से रोग पहचान",
       "scanDesc": "पत्ती की फोटो दें—रोग और दवा तुरंत जानें",
+      "yieldRadarTitle": "AI उपज अनुमान व कीट रडार",
+      "yieldRadarDesc": "चरणवार फोटो से उपज अनुमान और क्षेत्रीय कीट प्रकोप अलर्ट",
       "weatherTitle": "मौसम व बारिश अलर्ट",
       "weatherDesc": "आज व 5 दिन का तापमान, बारिश और चेतावनी",
       "calendarTitle": "बुवाई व कटाई का समय",
       "calendarDesc": "किस महीने कौन सी फसल लगाएं और कब काटें",
-      "marketTitle": "आज के मंडी भाव",
-      "marketDesc": "धान, आलू, प्याज और सब्जियों का ताजा भाव",
       "tipsTitle": "खेती और खाद सलाह",
       "tipsDesc": "खाद, बीज और सिंचाई के आसान चरण",
       "feedbackTitle": "सवाल और संपर्क",
@@ -994,48 +906,6 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "bookmarkSaved": "सहेजा गया",
       "noTipsMatch": "कोई टिप नहीं मिली। दूसरा शब्द आज़माएं।"
     },
-    "market": {
-      "sectionTitle": "नियमित लाइव मंडी फसल भाव अपडेट",
-      "sectionSubtitle": "क्षेत्रीय हाट और मंडी में प्रति किलो व प्रति मन (40 किलो) ताजा भाव। एक क्लिक में आज के लाइव भाव लाएं या स्थानीय भाव अपडेट करें।",
-      "searchPlaceholder": "फसल या मंडी का नाम लिखें...",
-      "allCategories": "सभी उत्पाद",
-      "categories": {
-        "all": "सभी",
-        "grain": "अनाज व दालें",
-        "vegetable": "सब्जियां",
-        "spice": "मसाले",
-        "fruit": "फल"
-      },
-      "perKg": "प्रति किलो",
-      "perMaund": "प्रति मन (40 किग्रा)",
-      "trendUp": "भाव बढ़ा",
-      "trendDown": "भाव घटा",
-      "trendStable": "स्थिर",
-      "listenMarket": "मंडी भाव सुनें",
-      "refreshLiveBtn": "आज का लाइव भाव अपडेट",
-      "refreshingLive": "लाइव भाव लाया जा रहा है...",
-      "lastMarketSyncLabel": "अंतिम मंडी अपडेट",
-      "autoSyncNote": "नियमित स्वचालित भाव सिंक सक्रिय है",
-      "verifiedLiveBadge": "लाइव सत्यापित",
-      "farmerReportBadge": "स्थानीय रिपोर्ट",
-      "sourcesTitle": "स्रोत",
-      "quickUpdateBtn": "भाव बदलें",
-      "editingPriceTitle": "इस फसल का आज का भाव अपडेट करें",
-      "addNewPriceTitle": "नया मंडी भाव जोड़ें",
-      "reportPriceBtn": "नया भाव जोड़ें",
-      "closeForm": "फॉर्म बंद करें",
-      "cropNameLabel": "फसल का नाम",
-      "marketNameLabel": "मंडी / हाट का नाम",
-      "priceKgLabel": "भाव (प्रति किलो)",
-      "currencyLabel": "मुद्रा",
-      "trendLabel": "बाजार स्थिति",
-      "submitPrice": "भाव अपडेट सहेजें",
-      "pendingSyncTag": "सिंक की प्रतीक्षा (ऑफलाइन)",
-      "syncedTag": "सिंक पूर्ण",
-      "updateSuccessMsg": "आज का मंडी भाव सफलतापूर्वक अपडेट हो गया।",
-      "refreshSuccessMsg": "आज के ताजा मंडी भाव अपडेट कर दिए गए हैं।",
-      "refreshErrorMsg": "अभी लाइव मंडी भाव नहीं मिल सका; डिवाइस में सेव नवीनतम भाव दिखाए जा रहे हैं।"
-    },
     "feedback": {
       "sectionTitle": "किसान संपर्क और सुझाव फॉर्म",
       "sectionSubtitle": "फसल से जुड़ा सवाल या समस्या भेजें। ऑफलाइन रहने पर डेटा सेव रहता है और इंटरनेट आते ही सिंक हो जाता है।",
@@ -1055,7 +925,6 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "categories": {
         "disease": "फसल रोग व कीट",
         "weather": "मौसम व सिंचाई",
-        "market": "मंडी भाव",
         "suggestion": "ऐप सुझाव"
       }
     },
@@ -1071,14 +940,13 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
     },
     "offlineDrawer": {
       "title": "ऑफलाइन डेटा प्रबंधन व सिंक केंद्र",
-      "subtitle": "बिना इंटरनेट के भी सारा कृषि डेटा, फोटो कतार और मंडी भाव 3 आसान चरणों में प्रबंधित करें।",
+      "subtitle": "बिना इंटरनेट के भी सारा कृषि डेटा, फोटो कतार और मौसम कैश 3 आसान चरणों में प्रबंधित करें।",
       "storageOverviewTitle": "1. डिवाइस स्टोरेज और डेटा स्थिति",
       "storageUsedLabel": "उपयोग किया गया स्थान",
       "tipsCount": "फसल देखभाल टिप्स",
-      "marketCount": "मंडी भाव रिकॉर्ड",
       "diagnosesCount": "रोग जांच रिपोर्ट",
+      "yieldPredictionsCount": "सहेजे गए उपज अनुमान",
       "pendingScansCount": "प्रतीक्षारत ऑफलाइन स्कैन",
-      "pendingPricesCount": "सिंक बाकी मंडी भाव",
       "pendingCount": "कुल सिंक शेष",
       "weatherCached": "मौसम ऑफलाइन कैश",
       "audioCached": "सहेजे गए ऑडियो क्लिप",
@@ -1109,7 +977,7 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "evening": "शुभ संध्या! अस्सलामु अलैकुम",
       "night": "शुभ रात्रि! अस्सलामु अलैकुम",
       "firstVisitBadge": "पहली बार आने पर स्वागत है",
-      "firstVisitMessage": "कृषि मित्र में आपका हार्दिक स्वागत है! आज का मौसम, फसल रोग जांच, बुवाई समय और मंडी भाव एक जगह देखें।",
+      "firstVisitMessage": "कृषि मित्र में आपका हार्दिक स्वागत है! आज का मौसम, फसल रोग जांच, बुवाई समय और खेती सलाह एक जगह देखें।",
       "returningMessage": "कृषि मित्र में फिर से स्वागत है! आपके खेत के लिए आज का मौसम और ताज़ा कृषि सलाह तैयार है।",
       "visitOrdinalPrefix": "आपकी",
       "visitOrdinalSuffix": "वीं विज़िट",
@@ -1225,7 +1093,7 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
     "brandName": "Krishi Mitra",
     "heroEyebrow": "Simple Smart Farming Assistant",
     "heroTitle": "Assalamu Alaikum! Daily Weather & Crop Care",
-    "heroSubtitle": "Check live weather, scan leaf diseases, see when to plant & harvest, and check local mandi prices—simple and available offline.",
+    "heroSubtitle": "Check live weather, scan leaf diseases, see when to plant & harvest, and browse crop care tips—simple and available offline.",
     "heroPrimaryCta": "Scan Crop Leaf",
     "heroSecondaryCta": "Listen to Daily Summary",
     "nav": {
@@ -1233,8 +1101,8 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "weather": "Weather",
       "calendar": "Calendar",
       "scanner": "Scan Leaf",
+      "yieldRadar": "Yield & Radar",
       "tips": "Crop Tips",
-      "market": "Market",
       "feedback": "Help"
     },
     "home": {
@@ -1249,12 +1117,12 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "airQualityLabel": "Air Quality",
       "scanTitle": "Scan Leaf Disease",
       "scanDesc": "Take or upload a leaf photo for instant cure",
+      "yieldRadarTitle": "AI Yield & Regional Pest Radar",
+      "yieldRadarDesc": "Multi-stage photo yield forecast & 5–14 day regional pest outbreak alerts",
       "weatherTitle": "Weather & Alerts",
       "weatherDesc": "Live temperature, 5-day rain forecast & storm alerts",
       "calendarTitle": "Planting & Harvest",
       "calendarDesc": "Check what to plant now and calculate harvest dates",
-      "marketTitle": "Market Prices",
-      "marketDesc": "Today’s crop prices per kg and per maund",
       "tipsTitle": "Farming & Fertilizer",
       "tipsDesc": "Easy fertilizer, seed, and irrigation guides",
       "feedbackTitle": "Ask & Contact",
@@ -1401,48 +1269,6 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "bookmarkSaved": "Saved",
       "noTipsMatch": "No crop tips match your filter."
     },
-    "market": {
-      "sectionTitle": "Regular Live Market Crop Price Updates",
-      "sectionSubtitle": "Regional mandi and haat prices per kg and per maund (40 kg). Refresh today's live market rates or update any local crop price directly.",
-      "searchPlaceholder": "Search crop or market...",
-      "allCategories": "All Produce",
-      "categories": {
-        "all": "All",
-        "grain": "Grains & Pulses",
-        "vegetable": "Vegetables",
-        "spice": "Spices",
-        "fruit": "Fruits"
-      },
-      "perKg": "Per Kg",
-      "perMaund": "Per Maund (40 kg)",
-      "trendUp": "Rising",
-      "trendDown": "Falling",
-      "trendStable": "Steady",
-      "listenMarket": "Listen to Prices",
-      "refreshLiveBtn": "Refresh Live Prices",
-      "refreshingLive": "Fetching live prices...",
-      "lastMarketSyncLabel": "Last market update",
-      "autoSyncNote": "Regular automatic price sync active",
-      "verifiedLiveBadge": "Live Verified",
-      "farmerReportBadge": "Local Report",
-      "sourcesTitle": "Sources",
-      "quickUpdateBtn": "Update",
-      "editingPriceTitle": "Update Today's Price for This Crop",
-      "addNewPriceTitle": "Add New Crop or Market Price",
-      "reportPriceBtn": "Add New Price",
-      "closeForm": "Close Form",
-      "cropNameLabel": "Crop Name",
-      "marketNameLabel": "Market / Haat Name",
-      "priceKgLabel": "Price (per Kg)",
-      "currencyLabel": "Currency",
-      "trendLabel": "Price Trend",
-      "submitPrice": "Save Price Update",
-      "pendingSyncTag": "Pending Sync (Offline)",
-      "syncedTag": "Synced",
-      "updateSuccessMsg": "Today's market price updated successfully.",
-      "refreshSuccessMsg": "Latest market prices refreshed.",
-      "refreshErrorMsg": "Could not reach live market feeds right now; showing latest cached prices."
-    },
     "feedback": {
       "sectionTitle": "Farmer Contact & Feedback Form",
       "sectionSubtitle": "Submit crop questions, local issues, or feedback. Entries queue in IndexedDB offline and sync automatically online.",
@@ -1462,7 +1288,6 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "categories": {
         "disease": "Crop Disease & Pests",
         "weather": "Weather & Irrigation",
-        "market": "Market Prices",
         "suggestion": "App Suggestion"
       }
     },
@@ -1474,18 +1299,17 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "aiVoiceBadge": "Natural Voice",
       "offlineVoiceBadge": "Offline Voice",
       "speedLabel": "Speed",
-      "emptyState": "Tap any \"Listen\" button across weather, crop tips, market prices, or diagnosis to hear it read aloud."
+      "emptyState": "Tap any \"Listen\" button across weather, crop tips, calendar, or diagnosis to hear it read aloud."
     },
     "offlineDrawer": {
       "title": "Offline Data Management & Sync Hub",
-      "subtitle": "Easily manage stored crop guides, market prices, offline scan queue, backups, and storage space.",
+      "subtitle": "Easily manage stored crop guides, offline scan queue, weather cache, backups, and storage space.",
       "storageOverviewTitle": "1. Storage Overview & Quota",
       "storageUsedLabel": "Storage Used",
       "tipsCount": "Cached Crop Tips",
-      "marketCount": "Market Price Records",
       "diagnosesCount": "Saved Disease Reports",
+      "yieldPredictionsCount": "Saved Yield Forecasts",
       "pendingScansCount": "Queued Offline Scans",
-      "pendingPricesCount": "Pending Price Edits",
       "pendingCount": "Total Pending Sync",
       "weatherCached": "Weather Cache",
       "audioCached": "Cached Audio Clips",
@@ -1516,7 +1340,7 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "evening": "Good Evening! Assalamu Alaikum",
       "night": "Good Night! Assalamu Alaikum",
       "firstVisitBadge": "Welcome on Your First Visit",
-      "firstVisitMessage": "Warm welcome to Krishi Mitra! Check today's local weather, crop disease scan, planting dates, and live market prices in one place.",
+      "firstVisitMessage": "Warm welcome to Krishi Mitra! Check today's local weather, crop disease scan, planting dates, and care tips in one place.",
       "returningMessage": "Welcome back to Krishi Mitra! Today's weather forecast and fresh farming guidance are ready for your field.",
       "visitOrdinalPrefix": "Visit #",
       "visitOrdinalSuffix": "",
