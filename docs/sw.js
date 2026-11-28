@@ -87,7 +87,7 @@ define(['./workbox-957bde9c'], (function (workbox) { 'use strict';
     "revision": "49bfbb394f0fe8f80bebcc6a5ef38d8d"
   }, {
     "url": "index.html",
-    "revision": "0f0aaf7f18f12c1521735a19d12ac293"
+    "revision": "7b5bfce785391e70a8c3085d850a7909"
   }, {
     "url": "icon.svg",
     "revision": "6f5862cda0c04b3401bf6aae096cb7dd"
@@ -113,19 +113,19 @@ define(['./workbox-957bde9c'], (function (workbox) { 'use strict';
     "url": "assets/rolldown-runtime-WkwZ5CU-.js",
     "revision": null
   }, {
-    "url": "assets/react-vendor-4mZ4WzFk.js",
+    "url": "assets/react-vendor-Dx1_yTDu.js",
     "revision": null
   }, {
     "url": "assets/qr-engine-CXHAcuVq.js",
     "revision": null
   }, {
-    "url": "assets/lucide-icons-EYRzEuV6.js",
+    "url": "assets/lucide-icons-DGOLwOtn.js",
     "revision": null
   }, {
-    "url": "assets/index-UsiyPQ5m.css",
+    "url": "assets/index-CNBXxii1.js",
     "revision": null
   }, {
-    "url": "assets/index-B-LY7U-O.js",
+    "url": "assets/index-B9BPjxry.css",
     "revision": null
   }, {
     "url": "assets/hero_farmland_dawn_1795261297830-Bl3SH4kv.jpg",
@@ -143,22 +143,25 @@ define(['./workbox-957bde9c'], (function (workbox) { 'use strict';
     "url": "assets/catalog-data-JT8MA4x3.js",
     "revision": null
   }, {
-    "url": "assets/YieldAndPestIntelligenceSection-DPZ5FAE8.js",
+    "url": "assets/YieldAndPestIntelligenceSection-DO4g-00f.js",
     "revision": null
   }, {
-    "url": "assets/OfflineSyncDrawer-DwTILlon.js",
+    "url": "assets/OfflineSyncDrawer-BsoyVBrk.js",
     "revision": null
   }, {
-    "url": "assets/DiseaseScannerSection-JA1Js84o.js",
+    "url": "assets/FarmerProfileSection-BF1KGttY.js",
     "revision": null
   }, {
-    "url": "assets/CropTipsSection-DFaqUITL.js",
+    "url": "assets/DiseaseScannerSection-CGSo5l0v.js",
     "revision": null
   }, {
-    "url": "assets/CropCalendarSection-DX59vEAJ.js",
+    "url": "assets/CropTipsSection-DlS4wRC6.js",
     "revision": null
   }, {
-    "url": "assets/AgroServiceHubSection-DwbIKJrY.js",
+    "url": "assets/CropCalendarSection-CDfbOGbD.js",
+    "revision": null
+  }, {
+    "url": "assets/AgroServiceHubSection-CuPq3lj8.js",
     "revision": null
   }, {
     "url": "apple-touch-icon.png",

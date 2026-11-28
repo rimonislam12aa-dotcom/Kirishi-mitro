@@ -3,6 +3,8 @@ import { Analytics } from '@vercel/analytics/react';
 import {
   AlertTriangle,
   ArrowRight,
+  Bell,
+  BellOff,
   BellRing,
   Calendar,
   Camera,
@@ -14,6 +16,7 @@ import {
   Droplets,
   Globe,
   MapPin,
+  Newspaper,
   Radar,
   ShieldCheck,
   Sprout,
@@ -24,13 +27,24 @@ import {
   X,
 } from 'lucide-react';
 import { AudioPlayerBar } from './components/AudioPlayerBar';
+import { BottomNavigationBar } from './components/BottomNavigationBar';
+import { CropSubPageShell } from './components/CropSubPageShell';
+import { DailyAgriNewsSection } from './components/DailyAgriNewsSection';
 import { Header } from './components/Header';
+import { HomeFeatureRoutesGrid } from './components/HomeFeatureRoutesGrid';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { VisitorGreetingBanner } from './components/VisitorGreetingBanner';
 import { WeatherAlertSection } from './components/WeatherAlertSection';
 import { getTimeSlotFieldAdvisory } from './catalog/agroAdvisoryData';
 import { CROP_CALENDAR_DATA } from './catalog/cropCalendarData';
 import { AudioPlayerProvider, useAudioPlayer } from './context/AudioPlayerContext';
+import {
+  CROP_SUB_ROUTE_CATALOG,
+  getRouteHref,
+  parseCurrentRoute,
+  syncBrowserHistory,
+  updateDocumentRouteTitle,
+} from './lib/appRouter';
 
 const CropCalendarSection = lazy(() =>
   import('./components/CropCalendarSection').then((m) => ({ default: m.CropCalendarSection }))
@@ -51,6 +65,9 @@ const OfflineSyncDrawer = lazy(() =>
 );
 const AgroServiceHubSection = lazy(() =>
   import('./components/AgroServiceHubSection').then((m) => ({ default: m.AgroServiceHubSection }))
+);
+const FarmerProfileSection = lazy(() =>
+  import('./components/FarmerProfileSection').then((m) => ({ default: m.FarmerProfileSection }))
 );
 
 const SectionSkeleton: React.FC = () => (
@@ -94,7 +111,10 @@ import {
 } from './lib/weatherService';
 import {
   AppLanguage,
+  AppPageTab,
+  AppRouteState,
   AutoSyncIntervalMinutes,
+  CropFeatureRouteId,
   CropTip,
   DiseaseDiagnosis,
   GeoLocationInfo,
@@ -289,9 +309,14 @@ const KrishiAppContent: React.FC = () => {
   const isOnline = useOnlineStatus();
   const { currentTrack, playTrack } = useAudioPlayer();
 
-  // মূল অ্যাপের স্টেটসমূহ (সহজে বোঝার জন্য আলাদা আলাদা রাখা হয়েছে)
+  // মূল অ্যাপের স্টেটসমূহ (প্যারেন্ট-চাইল্ড রাউটিং ও ডেটা স্টেট)
   const [lang, setLang] = useState<AppLanguage>('bn');
-  const [activeSection, setActiveSection] = useState<NavSection>('weather');
+  const [initialRoute] = useState<AppRouteState>(() => parseCurrentRoute());
+  const [activePage, setActivePage] = useState<AppPageTab>(initialRoute.parentPage);
+  const [activeSubRoute, setActiveSubRoute] = useState<CropFeatureRouteId | null>(
+    initialRoute.subRoute
+  );
+  const [entryParent, setEntryParent] = useState<AppPageTab>(initialRoute.entryParent);
   const [weather, setWeather] = useState<WeatherCacheRecord | null>(null);
   const [isWeatherLoading, setIsWeatherLoading] = useState(true);
   const [tips, setTips] = useState<CropTip[]>([]);
@@ -978,15 +1003,159 @@ const KrishiAppContent: React.FC = () => {
     document.documentElement.lang = newLang;
   };
 
-  // মেনুতে ক্লিক করলে এক-পাতার নির্দিষ্ট সেকশনে মসৃণভাবে স্ক্রল করে নিয়ে যাবে
-  const handleNavigate = (section: NavSection) => {
-    setActiveSection(section);
-    if (section === 'home') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-    document.getElementById(section)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+  // ব্রাউজার হিস্ট্রি ও প্যারেন্ট-চাইল্ড রাউট সিঙ্ক (Back/Forward এবং ডিপ-লিঙ্ক সাপোর্ট)
+  useEffect(() => {
+    const initialState: AppRouteState = {
+      parentPage: activePage,
+      subRoute: activeSubRoute,
+      entryParent,
+    };
+    syncBrowserHistory(initialState, 'replace');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    updateDocumentRouteTitle(lang, t.brandName, {
+      parentPage: activePage,
+      subRoute: activeSubRoute,
+      entryParent,
+    });
+  }, [lang, t.brandName, activePage, activeSubRoute, entryParent]);
+
+  useEffect(() => {
+    const handlePopOrHash = () => {
+      const parsed = parseCurrentRoute();
+      setActivePage(parsed.parentPage);
+      setActiveSubRoute(parsed.subRoute);
+      setEntryParent(parsed.entryParent);
+    };
+    window.addEventListener('popstate', handlePopOrHash);
+    window.addEventListener('hashchange', handlePopOrHash);
+    return () => {
+      window.removeEventListener('popstate', handlePopOrHash);
+      window.removeEventListener('hashchange', handlePopOrHash);
+    };
+  }, []);
+
+  const applyRouteState = useCallback(
+    (nextState: AppRouteState, historyMode: 'push' | 'replace' = 'push', scrollTargetId?: string) => {
+      setActivePage(nextState.parentPage);
+      setActiveSubRoute(nextState.subRoute);
+      setEntryParent(nextState.entryParent);
+      syncBrowserHistory(nextState, historyMode);
+      if (!scrollTargetId) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      window.setTimeout(() => {
+        document
+          .getElementById(scrollTargetId)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 90);
+    },
+    []
+  );
+
+  const handleOpenSubRoute = useCallback(
+    (routeId: CropFeatureRouteId, fromParent?: AppPageTab) => {
+      const resolvedParent = fromParent ?? (activeSubRoute ? entryParent : activePage);
+      applyRouteState(
+        {
+          parentPage: 'crops',
+          subRoute: routeId,
+          entryParent: resolvedParent,
+        },
+        'push'
+      );
+    },
+    [activePage, activeSubRoute, applyRouteState, entryParent]
+  );
+
+  const handleBackFromSubRoute = useCallback(() => {
+    const fallbackParent: AppPageTab =
+      entryParent === 'profile' || entryParent === 'crops' ? entryParent : 'home';
+    applyRouteState(
+      {
+        parentPage: fallbackParent,
+        subRoute: null,
+        entryParent: fallbackParent,
+      },
+      'push'
+    );
+  }, [applyRouteState, entryParent]);
+
+  const scrollToElementOnPage = useCallback(
+    (page: AppPageTab, elementId?: string) => {
+      const sectionToSubRoute: Record<string, CropFeatureRouteId> = {
+        tips: 'cultivation-tips',
+        calendar: 'crop-calendar',
+        scanner: 'disease-scanner',
+        'yield-radar': 'yield-pest-radar',
+        'agro-service': 'field-assistant',
+      };
+
+      if (page === 'crops' && elementId && sectionToSubRoute[elementId]) {
+        handleOpenSubRoute(sectionToSubRoute[elementId]);
+        return;
+      }
+
+      applyRouteState(
+        {
+          parentPage: page,
+          subRoute: null,
+          entryParent: page,
+        },
+        'push',
+        elementId
+      );
+    },
+    [applyRouteState, handleOpenSubRoute]
+  );
+
+  const handleSelectPage = useCallback(
+    (page: AppPageTab) => {
+      applyRouteState(
+        {
+          parentPage: page,
+          subRoute: null,
+          entryParent: page,
+        },
+        'push'
+      );
+    },
+    [applyRouteState]
+  );
+
+  // মেনু বা বাটনে ক্লিক করলে সংশ্লিষ্ট প্যারেন্ট বা চাইল্ড সাব-পেজ রাউটে নিয়ে যাবে
+  const handleNavigate = useCallback(
+    (section: NavSection) => {
+      if (section === 'home') {
+        handleSelectPage('home');
+        return;
+      }
+      if (section === 'weather') {
+        scrollToElementOnPage('home', 'weather');
+        return;
+      }
+      if (section === 'tips') {
+        handleOpenSubRoute('cultivation-tips');
+        return;
+      }
+      if (section === 'calendar') {
+        setCropViewMode('directory');
+        handleOpenSubRoute('crop-calendar');
+        return;
+      }
+      if (section === 'scanner') {
+        handleOpenSubRoute('disease-scanner');
+        return;
+      }
+      if (section === 'yield-radar') {
+        handleOpenSubRoute('yield-pest-radar');
+      }
+    },
+    [handleOpenSubRoute, handleSelectPage, scrollToElementOnPage]
+  );
 
   const handleSelectActiveCrop = useCallback((id: string) => {
     setActiveCropId(id);
@@ -1039,12 +1208,9 @@ const KrishiAppContent: React.FC = () => {
         handleSelectActiveCrop(cropId);
       }
       setCropViewMode('crop-page');
-      setActiveSection('calendar');
-      window.setTimeout(() => {
-        document.getElementById('calendar')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 60);
+      handleOpenSubRoute('crop-calendar');
     },
-    [handleSelectActiveCrop]
+    [handleOpenSubRoute, handleSelectActiveCrop]
   );
 
   const handleUpdateLocation = async (loc: GeoLocationInfo) => {
@@ -1136,14 +1302,20 @@ const KrishiAppContent: React.FC = () => {
 
   return (
     <div
-      className={`min-h-[100dvh] bg-[#F4F5F2] md:pb-10 ${
+      className={`min-h-[100dvh] bg-[#F4F5F2] ${
         hasAudioBar
-          ? 'pb-[calc(10.5rem+env(safe-area-inset-bottom))] md:pb-28'
-          : 'pb-[calc(5.25rem+env(safe-area-inset-bottom))]'
+          ? 'pb-[calc(10.75rem+env(safe-area-inset-bottom))] md:pb-40'
+          : 'pb-[calc(5.75rem+env(safe-area-inset-bottom))] md:pb-24'
       }`}
     >
-      {/* উপরের নেভিগেশন ও মোবাইলের নিচের নেভিগেশন বার */}
-      <Header t={t} activeSection={activeSection} onNavigate={handleNavigate} />
+      {/* উপরের নেভিগেশন ও নিচের সর্বদা দৃশ্যমান ৩-ট্যাব বটম নেভিগেশন বার */}
+      <Header
+        t={t}
+        lang={lang}
+        activePage={activePage}
+        onSelectPage={handleSelectPage}
+        onOpenScanner={() => handleNavigate('scanner')}
+      />
 
       {/* তাৎক্ষণিক আবহাওয়া সতর্কতা নোটিফিকেশন বক্স */}
       {activeToast && (
@@ -1175,58 +1347,60 @@ const KrishiAppContent: React.FC = () => {
         </div>
       )}
 
-      {/* ১. হিরো ব্যানার */}
-      <section className="relative overflow-hidden border-b border-zinc-200 bg-[#255D28] text-white">
-        {!heroImgError && (
-          <img
-            src={heroFarmlandImg}
-            alt="Sunrise over terraced green rice paddies"
-            width={1600}
-            height={900}
-            fetchPriority="high"
-            decoding="async"
-            onError={() => setHeroImgError(true)}
-            className="absolute inset-0 h-full w-full object-cover object-center"
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#1A3D1C]/85 via-[#2E5D28]/65 to-[#3F5A20]/35" />
+      {/* ১. হিরো ব্যানার (হোম পেজে প্রদর্শিত) */}
+      {activePage === 'home' && !activeSubRoute && (
+        <section className="relative overflow-hidden border-b border-zinc-200 bg-[#255D28] text-white">
+          {!heroImgError && (
+            <img
+              src={heroFarmlandImg}
+              alt="Sunrise over terraced green rice paddies"
+              width={1600}
+              height={900}
+              fetchPriority="high"
+              decoding="async"
+              onError={() => setHeroImgError(true)}
+              className="absolute inset-0 h-full w-full object-cover object-center"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#1A3D1C]/85 via-[#2E5D28]/65 to-[#3F5A20]/35" />
 
-        <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
-          <div className="max-w-3xl">
-            <p className="text-xs sm:text-sm font-semibold tracking-wide text-lime-200 drop-shadow-xs">
-              {t.heroEyebrow}
-            </p>
-            <h1 className="mt-1.5 text-2xl font-bold leading-tight tracking-tight text-white drop-shadow-sm sm:text-4xl text-balance">
-              {t.heroTitle}
-            </h1>
-            <p className="mt-2.5 max-w-2xl text-sm leading-relaxed text-zinc-100 drop-shadow-xs sm:text-base">
-              {t.heroSubtitle}
-            </p>
+          <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+            <div className="max-w-3xl">
+              <p className="text-xs sm:text-sm font-semibold tracking-wide text-lime-200 drop-shadow-xs">
+                {t.heroEyebrow}
+              </p>
+              <h1 className="mt-1.5 text-2xl font-bold leading-tight tracking-tight text-white drop-shadow-sm sm:text-4xl text-balance">
+                {t.heroTitle}
+              </h1>
+              <p className="mt-2.5 max-w-2xl text-sm leading-relaxed text-zinc-100 drop-shadow-xs sm:text-base">
+                {t.heroSubtitle}
+              </p>
 
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-              <button
-                type="button"
-                onClick={() => handleNavigate('scanner')}
-                className="inline-flex min-h-[46px] w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-[#2E7D32] border border-lime-300/40 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#388E3C] text-center"
-              >
-                <Camera className="h-4 w-4 shrink-0" />
-                <span>{t.heroPrimaryCta}</span>
-              </button>
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <button
+                  type="button"
+                  onClick={() => handleNavigate('scanner')}
+                  className="inline-flex min-h-[46px] w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-[#2E7D32] border border-lime-300/40 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#388E3C] text-center"
+                >
+                  <Camera className="h-4 w-4 shrink-0" />
+                  <span>{t.heroPrimaryCta}</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={handleHeroBriefingAudio}
-                className="inline-flex min-h-[46px] w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-white/45 bg-black/25 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-xs transition-colors hover:bg-black/40 text-center"
-              >
-                <Volume2 className="h-4 w-4 shrink-0" />
-                <span>{t.heroSecondaryCta}</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={handleHeroBriefingAudio}
+                  className="inline-flex min-h-[46px] w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-white/45 bg-black/25 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-xs transition-colors hover:bg-black/40 text-center"
+                >
+                  <Volume2 className="h-4 w-4 shrink-0" />
+                  <span>{t.heroSecondaryCta}</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* ২. ভাষা পরিবর্তন, ইন্টারনেট অবস্থা, অফলাইন ডাটাবেজ ও ইনস্টল টুলবার */}
+      {/* ২. ভাষা পরিবর্তন, ইন্টারনেট অবস্থা, অফলাইন ডাটাবেজ ও অ্যাপ ইন্সটল টুলবার */}
       <div className="border-b border-zinc-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2.5 sm:gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center gap-2">
@@ -1288,466 +1462,632 @@ const KrishiAppContent: React.FC = () => {
         )}
       </div>
 
-      {/* ৩. একক পাতার সম্পূর্ণ ও সুবিন্যস্ত কৃষি ড্যাশবোর্ড */}
+      {/* ৩. ফার্মরাইজ স্টাইলের প্যারেন্ট-চাইল্ড রাউটিং: হোম | ফসলের পরামর্শ (+ ৫টি চাইল্ড সাব-পেজ) | প্রোফাইল */}
       <main>
-        {/* ভিজিটর স্বাগত বার্তা ও গ্রিটিং */}
-        <VisitorGreetingBanner
-          t={t}
-          lang={lang}
-          districtName={weather?.location.districtName}
-          visitorStats={visitorStats}
-        />
+        <div key={`${activePage}:${activeSubRoute ?? 'root'}`} className="animate-tab-enter">
+        {activeSubRoute && (
+          <CropSubPageShell
+            lang={lang}
+            activeSubRoute={activeSubRoute}
+            entryParent={entryParent}
+            contextMetric={
+              activeSubRoute === 'cultivation-tips'
+                ? `${tips.length} ${t.nav.tips}`
+                : activeSubRoute === 'crop-calendar'
+                ? `${activeCropItem.cropName[lang]} · ${Math.max(0, activeCropElapsedDays)}d`
+                : activeSubRoute === 'disease-scanner'
+                ? `${diagnoses.length} ${t.nav.scanner}`
+                : activeSubRoute === 'yield-pest-radar'
+                ? `${weather?.location.districtName ?? DISTRICT_PRESETS[0].name[lang]} · ${dbStats.yieldPredictionsCount}`
+                : currentTimeAdvisory.timeRangeLabel[lang]
+            }
+            onBack={handleBackFromSubRoute}
+            onNavigateParent={handleSelectPage}
+            onSwitchSubRoute={(routeId) => handleOpenSubRoute(routeId, entryParent)}
+          >
+            {activeSubRoute === 'cultivation-tips' && (
+              <Suspense fallback={<SectionSkeleton />}>
+                <CropTipsSection
+                  t={t}
+                  lang={lang}
+                  tips={tips}
+                  onToggleBookmark={handleToggleBookmark}
+                />
+              </Suspense>
+            )}
 
-        {/* প্রধান পর্দার দুটি বড় কার্ড (আবহাওয়া + রানিং টাস্ক) ও ৬টি সেবা মেনু কার্ড */}
-        <section
-          aria-label={t.home.todayAtGlance}
-          className="border-b border-zinc-200 bg-[#F4F5F2] py-6 sm:py-8"
-        >
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 items-stretch">
-              {/* বড় কার্ড ১: লাইভ আবহাওয়া ও স্প্রে পূর্বাভাস */}
-              <div className="lg:col-span-7 flex flex-col justify-between overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xs">
-                <div>
-                  <div className="flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-[#2E7D32] to-[#4D6A1F] px-5 py-4 text-white sm:px-6">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-lime-100">
-                        <MapPin className="h-3.5 w-3.5 shrink-0" />
-                        <span>
-                          {weather?.location.districtName ?? DISTRICT_PRESETS[0].name[lang]}
-                          {weather?.location.regionName ? ` · ${weather.location.regionName}` : ''}
-                        </span>
+            {activeSubRoute === 'crop-calendar' && (
+              <Suspense fallback={<SectionSkeleton />}>
+                <CropCalendarSection
+                  t={t}
+                  lang={lang}
+                  selectedCropId={activeCropId}
+                  onSelectCropId={handleSelectActiveCrop}
+                  plantingDate={activeCropSowDate}
+                  onPlantingDateChange={handleChangeActiveSowDate}
+                  viewMode={cropViewMode}
+                  onViewModeChange={setCropViewMode}
+                  completedStageKeys={completedStageKeys}
+                  onToggleStageComplete={handleToggleStageComplete}
+                  onBackToHome={handleBackFromSubRoute}
+                  onOpenTool={(tool) => handleNavigate(tool)}
+                />
+              </Suspense>
+            )}
+
+            {activeSubRoute === 'disease-scanner' && (
+              <Suspense fallback={<SectionSkeleton />}>
+                <DiseaseScannerSection
+                  t={t}
+                  lang={lang}
+                  isOnline={isOnline}
+                  weather={weather}
+                  savedDiagnoses={diagnoses}
+                  pendingScans={pendingScans}
+                  onDiagnosesChange={(next) => {
+                    setDiagnoses(next);
+                    refreshStats();
+                  }}
+                  onPendingScansChange={(next) => {
+                    setPendingScans(next);
+                    refreshStats();
+                  }}
+                />
+              </Suspense>
+            )}
+
+            {activeSubRoute === 'yield-pest-radar' && (
+              <Suspense fallback={<SectionSkeleton />}>
+                <YieldAndPestIntelligenceSection
+                  lang={lang}
+                  isOnline={isOnline}
+                  weather={weather}
+                  savedDiagnoses={diagnoses}
+                  onDataChange={refreshStats}
+                />
+              </Suspense>
+            )}
+
+            {activeSubRoute === 'field-assistant' && (
+              <Suspense fallback={<SectionSkeleton />}>
+                <AgroServiceHubSection
+                  lang={lang}
+                  isOnline={isOnline}
+                  weather={weather}
+                  nowMs={nowMs}
+                  autoSyncIntervalMinutes={autoSyncIntervalMinutes}
+                  lastAutoUpdateAt={lastAutoUpdateAt}
+                  nextAutoUpdateMs={nextAutoUpdateMs}
+                  isAutoRefreshing={isAutoRefreshing}
+                  onChangeAutoSyncInterval={handleChangeAutoSyncInterval}
+                  onTriggerAutoRefresh={runScheduledAutoSync}
+                />
+              </Suspense>
+            )}
+          </CropSubPageShell>
+        )}
+
+        {activePage === 'home' && !activeSubRoute && (
+          <>
+            {/* হোম পেজে ডেডিকেটেড অ্যাপ ইন্সটল ব্যানার */}
+            <PWAInstallButton t={t} variant="banner" />
+
+            {/* ভিজিটর স্বাগত বার্তা ও গ্রিটিং */}
+            <VisitorGreetingBanner
+              t={t}
+              lang={lang}
+              districtName={weather?.location.districtName}
+              visitorStats={visitorStats}
+            />
+
+            {/* হোম পেজের দুটি বড় কার্ড: আজকের আবহাওয়া + রানিং টাস্ক ও নোটিফিকেশন কুইক কন্ট্রোল */}
+            <section
+              aria-label={t.home.todayAtGlance}
+              className="border-b border-zinc-200 bg-[#F4F5F2] py-6 sm:py-8"
+            >
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 items-stretch">
+                  {/* বড় কার্ড ১: লাইভ আবহাওয়া ও স্প্রে পূর্বাভাস */}
+                  <div className="lg:col-span-7 flex flex-col justify-between overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xs">
+                    <div>
+                      <div className="flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-[#2E7D32] to-[#4D6A1F] px-5 py-4 text-white sm:px-6">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 text-xs font-medium text-lime-100">
+                            <MapPin className="h-3.5 w-3.5 shrink-0" />
+                            <span>
+                              {weather?.location.districtName ?? DISTRICT_PRESETS[0].name[lang]}
+                              {weather?.location.regionName ? ` · ${weather.location.regionName}` : ''}
+                            </span>
+                          </div>
+                          <div className="mt-1 flex items-baseline gap-3">
+                            <span className="font-mono-tabular text-4xl font-bold tracking-tight sm:text-5xl">
+                              {weather ? `${weather.temperature}°C` : '—'}
+                            </span>
+                            <span className="text-sm font-semibold text-lime-50">
+                              {weather
+                                ? describeWeatherCode(weather.weatherCode, lang)
+                                : t.weather.detectingGps}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={handleHeroBriefingAudio}
+                            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-white/15 px-3.5 py-2 text-xs font-semibold text-white hover:bg-white/25 whitespace-nowrap"
+                          >
+                            <Volume2 className="h-4 w-4 shrink-0" />
+                            <span>{t.weather.listenWeather}</span>
+                          </button>
+                        </div>
                       </div>
-                      <div className="mt-1 flex items-baseline gap-3">
-                        <span className="font-mono-tabular text-4xl font-bold tracking-tight sm:text-5xl">
-                          {weather ? `${weather.temperature}°C` : '—'}
-                        </span>
-                        <span className="text-sm font-semibold text-lime-50">
-                          {weather
-                            ? describeWeatherCode(weather.weatherCode, lang)
-                            : t.weather.detectingGps}
-                        </span>
+
+                      <div className="p-5 sm:p-6 space-y-4">
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                          <div className="rounded-xl border border-zinc-200 bg-[#F8F9F7] p-3">
+                            <div className="flex items-center gap-1.5 text-xs text-zinc-600">
+                              <Droplets className="h-3.5 w-3.5 text-[#2E7D32]" />
+                              <span>{t.weather.humidity}</span>
+                            </div>
+                            <p className="mt-1 font-mono-tabular text-lg font-bold text-zinc-900">
+                              {weather ? `${weather.humidity}%` : '—'}
+                            </p>
+                          </div>
+
+                          <div className="rounded-xl border border-zinc-200 bg-[#F8F9F7] p-3">
+                            <div className="flex items-center gap-1.5 text-xs text-zinc-600">
+                              <CloudRain className="h-3.5 w-3.5 text-[#2E7D32]" />
+                              <span>{t.home.rainChanceLabel}</span>
+                            </div>
+                            <p className="mt-1 font-mono-tabular text-lg font-bold text-zinc-900">
+                              {weather?.forecast[0] ? `${weather.forecast[0].rainProb}%` : '0%'}
+                            </p>
+                          </div>
+
+                          <div className="rounded-xl border border-zinc-200 bg-[#F8F9F7] p-3">
+                            <div className="flex items-center gap-1.5 text-xs text-zinc-600">
+                              <Wind className="h-3.5 w-3.5 text-[#4D6A1F]" />
+                              <span>{t.weather.wind}</span>
+                            </div>
+                            <p className="mt-1 font-mono-tabular text-lg font-bold text-zinc-900">
+                              {weather ? `${weather.windSpeed} km/h` : '—'}
+                            </p>
+                          </div>
+
+                          <div className="rounded-xl border border-zinc-200 bg-[#F8F9F7] p-3">
+                            <div className="flex items-center gap-1.5 text-xs text-zinc-600">
+                              <CloudSun className="h-3.5 w-3.5 text-[#4D6A1F]" />
+                              <span>{t.home.airQualityLabel}</span>
+                            </div>
+                            <p className="mt-1 font-mono-tabular text-lg font-bold text-zinc-900">
+                              {weather?.aqi ?? '—'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {weather && weather.forecast.length > 0 && (
+                          <div className="grid grid-cols-3 gap-2.5">
+                            {weather.forecast.slice(0, 3).map((day) => (
+                              <div
+                                key={day.date}
+                                className="rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-xs"
+                              >
+                                <p className="font-semibold text-zinc-700">
+                                  {new Date(day.date).toLocaleDateString(
+                                    lang === 'bn' ? 'bn-BD' : lang === 'hi' ? 'hi-IN' : 'en-GB',
+                                    { weekday: 'short', day: 'numeric' }
+                                  )}
+                                </p>
+                                <p className="mt-1 font-mono-tabular text-sm font-bold text-zinc-900">
+                                  {Math.round(day.tempMin)}°–{Math.round(day.tempMax)}°
+                                </p>
+                                <p className="mt-0.5 font-mono-tabular text-[11px] text-[#2E7D32] font-medium">
+                                  {day.rainProb}% {t.weather.rain}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="flex items-start gap-2.5 rounded-xl border border-[#2E7D32]/20 bg-[#EEF4EA] p-3.5 text-xs">
+                          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#2E7D32]" />
+                          <div>
+                            <p className="font-bold text-[#1F4E23]">
+                              {currentTimeAdvisory.spraySafety.headline[lang]}
+                            </p>
+                            <p className="mt-0.5 leading-relaxed text-zinc-700">
+                              {currentTimeAdvisory.spraySafety.reason[lang]}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center justify-between gap-3 border-t border-zinc-200 bg-[#F8F9F7] px-5 py-3.5 sm:px-6">
+                      <span className="text-xs font-medium text-zinc-600">
+                        {weather?.alerts.length
+                          ? `${weather.alerts[0].title[lang]}`
+                          : t.weather.noAlerts}
+                      </span>
                       <button
                         type="button"
-                        onClick={handleHeroBriefingAudio}
-                        className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-white/15 px-3.5 py-2 text-xs font-semibold text-white hover:bg-white/25 whitespace-nowrap"
+                        onClick={() => scrollToElementOnPage('home', 'weather')}
+                        className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl bg-[#2E7D32] px-4 py-2 text-xs font-semibold text-white hover:bg-[#256628] whitespace-nowrap shrink-0"
                       >
-                        <Volume2 className="h-4 w-4 shrink-0" />
-                        <span>{t.weather.listenWeather}</span>
+                        <span>{t.nav.weather}</span>
+                        <ArrowRight className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </div>
 
-                  <div className="p-5 sm:p-6 space-y-4">
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                      <div className="rounded-xl border border-zinc-200 bg-[#F8F9F7] p-3">
-                        <div className="flex items-center gap-1.5 text-xs text-zinc-600">
-                          <Droplets className="h-3.5 w-3.5 text-[#2E7D32]" />
-                          <span>{t.weather.humidity}</span>
+                  {/* বড় কার্ড ২: রানিং টাস্ক, নোটিফিকেশন ও ইন্সটল কুইক অ্যাকশন */}
+                  <div className="lg:col-span-5 flex flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6 shadow-xs">
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between gap-3 border-b border-zinc-100 pb-3.5">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-wide text-[#4D6A1F]">
+                            {currentTimeAdvisory.timeRangeLabel[lang]}
+                          </p>
+                          <h2 className="mt-0.5 text-lg font-bold text-zinc-900">
+                            {lang === 'bn'
+                              ? 'আজকের রানিং টাস্ক ও জরুরি সতর্কতা'
+                              : lang === 'hi'
+                              ? 'आज के चालू कार्य और अलर्ट'
+                              : 'Today’s Running Tasks & Alerts'}
+                          </h2>
                         </div>
-                        <p className="mt-1 font-mono-tabular text-lg font-bold text-zinc-900">
-                          {weather ? `${weather.humidity}%` : '—'}
-                        </p>
+                        <span className="font-mono-tabular text-xs font-bold text-[#2E7D32]">
+                          {Object.values(completedDailyTasks).filter(Boolean).length}/
+                          {currentTimeAdvisory.tasks[lang].length}
+                        </span>
                       </div>
 
-                      <div className="rounded-xl border border-zinc-200 bg-[#F8F9F7] p-3">
-                        <div className="flex items-center gap-1.5 text-xs text-zinc-600">
-                          <CloudRain className="h-3.5 w-3.5 text-[#2E7D32]" />
-                          <span>{t.home.rainChanceLabel}</span>
-                        </div>
-                        <p className="mt-1 font-mono-tabular text-lg font-bold text-zinc-900">
-                          {weather?.forecast[0] ? `${weather.forecast[0].rainProb}%` : '0%'}
-                        </p>
-                      </div>
-
-                      <div className="rounded-xl border border-zinc-200 bg-[#F8F9F7] p-3">
-                        <div className="flex items-center gap-1.5 text-xs text-zinc-600">
-                          <Wind className="h-3.5 w-3.5 text-[#4D6A1F]" />
-                          <span>{t.weather.wind}</span>
-                        </div>
-                        <p className="mt-1 font-mono-tabular text-lg font-bold text-zinc-900">
-                          {weather ? `${weather.windSpeed} km/h` : '—'}
-                        </p>
-                      </div>
-
-                      <div className="rounded-xl border border-zinc-200 bg-[#F8F9F7] p-3">
-                        <div className="flex items-center gap-1.5 text-xs text-zinc-600">
-                          <CloudSun className="h-3.5 w-3.5 text-[#4D6A1F]" />
-                          <span>{t.home.airQualityLabel}</span>
-                        </div>
-                        <p className="mt-1 font-mono-tabular text-lg font-bold text-zinc-900">
-                          {weather?.aqi ?? '—'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {weather && weather.forecast.length > 0 && (
-                      <div className="grid grid-cols-3 gap-2.5">
-                        {weather.forecast.slice(0, 3).map((day) => (
-                          <div
-                            key={day.date}
-                            className="rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-xs"
-                          >
-                            <p className="font-semibold text-zinc-700">
-                              {new Date(day.date).toLocaleDateString(
-                                lang === 'bn' ? 'bn-BD' : lang === 'hi' ? 'hi-IN' : 'en-GB',
-                                { weekday: 'short', day: 'numeric' }
+                      <div className="space-y-2">
+                        {currentTimeAdvisory.tasks[lang].map((taskText, idx) => {
+                          const done = Boolean(completedDailyTasks[String(idx)]);
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => handleToggleDailyTask(idx)}
+                              className={`flex min-h-[44px] w-full items-start gap-2.5 rounded-xl border px-3 py-2.5 text-left text-xs sm:text-sm transition-colors ${
+                                done
+                                  ? 'border-[#2E7D32]/30 bg-[#EEF4EA]/70 text-zinc-500 line-through'
+                                  : 'border-zinc-200 bg-[#F8F9F7] text-zinc-800 hover:border-[#4D6A1F]'
+                              }`}
+                            >
+                              {done ? (
+                                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#2E7D32]" />
+                              ) : (
+                                <Circle className="mt-0.5 h-4 w-4 shrink-0 text-[#4D6A1F]" />
                               )}
-                            </p>
-                            <p className="mt-1 font-mono-tabular text-sm font-bold text-zinc-900">
-                              {Math.round(day.tempMin)}°–{Math.round(day.tempMax)}°
-                            </p>
-                            <p className="mt-0.5 font-mono-tabular text-[11px] text-[#2E7D32] font-medium">
-                              {day.rainProb}% {t.weather.rain}
-                            </p>
-                          </div>
-                        ))}
+                              <span className="leading-snug">{taskText}</span>
+                            </button>
+                          );
+                        })}
                       </div>
-                    )}
 
-                    <div className="flex items-start gap-2.5 rounded-xl border border-[#2E7D32]/20 bg-[#EEF4EA] p-3.5 text-xs">
-                      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#2E7D32]" />
-                      <div>
-                        <p className="font-bold text-[#1F4E23]">
-                          {currentTimeAdvisory.spraySafety.headline[lang]}
-                        </p>
-                        <p className="mt-0.5 leading-relaxed text-zinc-700">
-                          {currentTimeAdvisory.spraySafety.reason[lang]}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-3 border-t border-zinc-200 bg-[#F8F9F7] px-5 py-3.5 sm:px-6">
-                  <span className="text-xs font-medium text-zinc-600">
-                    {weather?.alerts.length
-                      ? `${weather.alerts[0].title[lang]}`
-                      : t.weather.noAlerts}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleNavigate('weather')}
-                    className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl bg-[#2E7D32] px-4 py-2 text-xs font-semibold text-white hover:bg-[#256628] whitespace-nowrap shrink-0"
-                  >
-                    <span>{t.nav.weather}</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* বড় কার্ড ২: রানিং টাস্ক ও চলমান ফসলের কাজ */}
-              <div className="lg:col-span-5 flex flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6 shadow-xs">
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between gap-3 border-b border-zinc-100 pb-3.5">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-wide text-[#4D6A1F]">
-                        {currentTimeAdvisory.timeRangeLabel[lang]}
-                      </p>
-                      <h2 className="mt-0.5 text-lg font-bold text-zinc-900">
-                        {lang === 'bn'
-                          ? 'আজকের রানিং টাস্ক ও ফসলের কাজ'
-                          : lang === 'hi'
-                          ? 'आज के चालू कार्य और फसल स्थिति'
-                          : 'Running Tasks & Active Field Work'}
-                      </h2>
-                    </div>
-                    <span className="font-mono-tabular text-xs font-bold text-[#2E7D32]">
-                      {Object.values(completedDailyTasks).filter(Boolean).length}/
-                      {currentTimeAdvisory.tasks[lang].length}
-                    </span>
-                  </div>
-
-                  <div className="space-y-2">
-                    {currentTimeAdvisory.tasks[lang].map((taskText, idx) => {
-                      const done = Boolean(completedDailyTasks[String(idx)]);
-                      return (
+                      {/* তাৎক্ষণিক আবহাওয়া নোটিফিকেশন কন্ট্রোল */}
+                      <div className="flex items-center justify-between gap-2.5 rounded-xl border border-zinc-200 bg-[#F8F9F7] p-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-zinc-900">
+                            {lang === 'bn'
+                              ? 'তাৎক্ষণিক আবহাওয়া ও দুর্যোগ নোটিফিকেশন'
+                              : lang === 'hi'
+                              ? 'लाइव मौसम अलर्ट नोटिफिकेशन'
+                              : 'Weather Push Notifications'}
+                          </p>
+                          <p className="mt-0.5 text-[11px] text-zinc-600 truncate">
+                            {pushEnabled ? t.weather.pushInAppActive : t.weather.enablePush}
+                          </p>
+                        </div>
                         <button
-                          key={idx}
                           type="button"
-                          onClick={() => handleToggleDailyTask(idx)}
-                          className={`flex min-h-[44px] w-full items-start gap-2.5 rounded-xl border px-3 py-2.5 text-left text-xs sm:text-sm transition-colors ${
-                            done
-                              ? 'border-[#2E7D32]/30 bg-[#EEF4EA]/70 text-zinc-500 line-through'
-                              : 'border-zinc-200 bg-[#F8F9F7] text-zinc-800 hover:border-[#4D6A1F]'
+                          onClick={() => handleTogglePush(!pushEnabled)}
+                          className={`inline-flex min-h-[38px] items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold whitespace-nowrap shrink-0 ${
+                            pushEnabled
+                              ? 'bg-[#2E7D32] text-white hover:bg-[#256628]'
+                              : 'border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-100'
                           }`}
                         >
-                          {done ? (
-                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#2E7D32]" />
+                          {pushEnabled ? (
+                            <Bell className="h-3.5 w-3.5" />
                           ) : (
-                            <Circle className="mt-0.5 h-4 w-4 shrink-0 text-[#4D6A1F]" />
+                            <BellOff className="h-3.5 w-3.5" />
                           )}
-                          <span className="leading-snug">{taskText}</span>
+                          <span>{pushEnabled ? t.weather.disablePush : t.weather.enablePush}</span>
                         </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="rounded-xl border border-[#4D6A1F]/25 bg-[#F8F9F7] p-3.5">
-                    <div className="flex items-center justify-between gap-2 text-xs">
-                      <span className="font-bold text-[#4D6A1F]">
-                        {lang === 'bn'
-                          ? 'চলমান ফসল সময়সূচি'
-                          : lang === 'hi'
-                          ? 'सक्रिय फसल शेड्यूल'
-                          : 'Active Crop Schedule'}
-                      </span>
-                      <span className="font-mono-tabular font-semibold text-zinc-700">
-                        {Math.max(0, activeCropElapsedDays)} / {activeCropItem.durationDaysMax}d
-                      </span>
-                    </div>
-
-                    <p className="mt-1 text-sm font-bold text-zinc-900">
-                      {activeCropItem.cropName[lang]} ·{' '}
-                      <span className="font-medium text-zinc-600">
-                        {nextActiveMilestone.title[lang]}
-                      </span>
-                    </p>
-
-                    <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-200">
-                      <div
-                        className="h-full rounded-full bg-[#4D6A1F]"
-                        style={{ width: `${activeCropProgressPct}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 pt-3.5">
-                  {pendingScans.length > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => handleNavigate('scanner')}
-                      className="text-xs font-semibold text-amber-800 hover:underline"
-                    >
-                      {pendingScans.length} {t.offlineDrawer.pendingScansCount}
-                    </button>
-                  ) : (
-                    <span className="text-xs text-zinc-500">
-                      {activeCropItem.seasonLabel[lang]}
-                    </span>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => handleOpenCropDedicatedPage(activeCropItem.id)}
-                    className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-[#4D6A1F] px-4 py-2 text-xs font-semibold text-white hover:bg-[#3E5618] whitespace-nowrap"
-                  >
-                    <span>
-                      {lang === 'bn'
-                        ? 'ফসলের ধাপভিত্তিক পেজ খুলুন'
-                        : lang === 'hi'
-                        ? 'फसल का चरण पेज खोलें'
-                        : 'Open Crop Stage Page'}
-                    </span>
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* ৬টি মূল কৃষি সেবা কার্ড (এক ক্লিকে সংশ্লিষ্ট সেকশনে স্ক্রল করবে) */}
-            <div className="pt-1">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-bold tracking-tight text-zinc-900 sm:text-xl text-balance">
-                    {t.home.menuHeading}
-                  </h2>
-                  <p className="mt-0.5 text-xs sm:text-sm text-zinc-600">
-                    {t.home.menuSubheading}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-                {[
-                  {
-                    id: 'calendar',
-                    title: t.home.calendarTitle,
-                    desc: t.home.calendarDesc,
-                    meta: `${CROP_CALENDAR_DATA.length} ${t.nav.cropsTab}`,
-                    icon: <Calendar className="h-5 w-5 text-[#2E7D32]" />,
-                    onClick: () => handleNavigate('calendar'),
-                  },
-                  {
-                    id: 'weather',
-                    title: t.home.weatherTitle,
-                    desc: t.home.weatherDesc,
-                    meta: weather
-                      ? `${weather.temperature}°C · ${weather.location.districtName}`
-                      : t.nav.weather,
-                    icon: <CloudSun className="h-5 w-5 text-[#2E7D32]" />,
-                    onClick: () => handleNavigate('weather'),
-                  },
-                  {
-                    id: 'scanner',
-                    title: t.home.scanTitle,
-                    desc: t.home.scanDesc,
-                    meta: `${t.scanner.savedHistoryTitle}: ${diagnoses.length}`,
-                    icon: <Camera className="h-5 w-5 text-[#2E7D32]" />,
-                    onClick: () => handleNavigate('scanner'),
-                  },
-                  {
-                    id: 'yield-radar',
-                    title: t.home.yieldRadarTitle,
-                    desc: t.home.yieldRadarDesc,
-                    meta: `${dbStats.yieldPredictionsCount} · ${t.nav.yieldRadar}`,
-                    icon: <Radar className="h-5 w-5 text-[#4D6A1F]" />,
-                    onClick: () => handleNavigate('yield-radar'),
-                  },
-                  {
-                    id: 'agro-service',
-                    title:
-                      lang === 'bn'
-                        ? 'দৈনিক মাঠ সহায়ক ও হেল্পলাইন'
-                        : lang === 'hi'
-                        ? 'दैनिक खेत सलाह और हेल्पलाइन'
-                        : 'Daily Field Advisory & Helplines',
-                    desc:
-                      lang === 'bn'
-                        ? 'স্প্রে নিরাপত্তা, সেচের ধাপ ও সরকারি কৃষি হেল্পলাইন নম্বর'
-                        : lang === 'hi'
-                        ? 'स्प्रे सुरक्षा, सिंचाई चरण और सरकारी कृषि हेल्पलाइन नंबर'
-                        : 'Spray safety, critical irrigation stages & farmer helpline numbers',
-                    meta: currentTimeAdvisory.timeRangeLabel[lang],
-                    icon: <ShieldCheck className="h-5 w-5 text-[#4D6A1F]" />,
-                    onClick: () => {
-                      setActiveSection('weather');
-                      document
-                        .getElementById('agro-service')
-                        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    },
-                  },
-                  {
-                    id: 'tips',
-                    title: t.home.tipsTitle,
-                    desc: t.home.tipsDesc,
-                    meta: `${tips.length} ${t.nav.tips}`,
-                    icon: <Sprout className="h-5 w-5 text-[#4D6A1F]" />,
-                    onClick: () => handleNavigate('tips'),
-                  },
-                ].map((feature) => (
-                  <button
-                    key={feature.id}
-                    type="button"
-                    onClick={feature.onClick}
-                    className="group flex h-full flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5 text-left shadow-xs transition-colors hover:border-[#2E7D32] hover:bg-[#F9FBF8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2E7D32]"
-                  >
-                    <div>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EEF4EA]">
-                          {feature.icon}
-                        </div>
-                        <ArrowRight className="h-4 w-4 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5 group-hover:text-[#2E7D32]" />
                       </div>
-                      <h3 className="mt-3 text-base font-bold text-zinc-900">{feature.title}</h3>
-                      <p className="mt-1 text-xs sm:text-sm leading-relaxed text-zinc-600">
-                        {feature.desc}
-                      </p>
+
+                      {/* চলমান ফসল সময়সূচি সারসংক্ষেপ */}
+                      <div className="rounded-xl border border-[#4D6A1F]/25 bg-[#F8F9F7] p-3.5">
+                        <div className="flex items-center justify-between gap-2 text-xs">
+                          <span className="font-bold text-[#4D6A1F]">
+                            {lang === 'bn'
+                              ? 'চলমান ফসল সময়সূচি'
+                              : lang === 'hi'
+                              ? 'सक्रिय फसल शेड्यूल'
+                              : 'Active Crop Schedule'}
+                          </span>
+                          <span className="font-mono-tabular font-semibold text-zinc-700">
+                            {Math.max(0, activeCropElapsedDays)} / {activeCropItem.durationDaysMax}d
+                          </span>
+                        </div>
+
+                        <p className="mt-1 text-sm font-bold text-zinc-900">
+                          {activeCropItem.cropName[lang]} ·{' '}
+                          <span className="font-medium text-zinc-600">
+                            {nextActiveMilestone.title[lang]}
+                          </span>
+                        </p>
+
+                        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-200">
+                          <div
+                            className="h-full rounded-full bg-[#4D6A1F]"
+                            style={{ width: `${activeCropProgressPct}%` }}
+                          />
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="mt-3 flex w-full items-center justify-between gap-2 border-t border-zinc-100 pt-2.5 text-xs">
-                      <span className="font-mono-tabular font-medium text-zinc-600">
-                        {feature.meta}
-                      </span>
-                      <span className="font-semibold text-[#2E7D32]">{t.home.openFeature}</span>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 pt-3.5">
+                      <button
+                        type="button"
+                        onClick={() => scrollToElementOnPage('home', 'agri-news')}
+                        className="inline-flex min-h-[38px] items-center gap-1.5 text-xs font-semibold text-[#2E7D32] hover:underline"
+                      >
+                        <Newspaper className="h-3.5 w-3.5" />
+                        <span>
+                          {lang === 'bn'
+                            ? 'আজকের কৃষি খবর দেখুন'
+                            : lang === 'hi'
+                            ? 'आज की कृषि खबरें'
+                            : 'Today’s Agri News'}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenCropDedicatedPage(activeCropItem.id)}
+                        className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-[#4D6A1F] px-4 py-2 text-xs font-semibold text-white hover:bg-[#3E5618] whitespace-nowrap"
+                      >
+                        <span>
+                          {lang === 'bn'
+                            ? 'ফসলের পরামর্শ পেজে যান'
+                            : lang === 'hi'
+                            ? 'फसल सलाह पेज खोलें'
+                            : 'Open Crop Advice'}
+                        </span>
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </button>
                     </div>
-                  </button>
-                ))}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </section>
+            </section>
 
-        {/* স্মার্ট কৃষি সেবা: দিনের সময়, স্প্রে নিরাপত্তা ও হেল্পলাইন */}
-        <Suspense fallback={<SectionSkeleton />}>
-          <AgroServiceHubSection
-            lang={lang}
-            isOnline={isOnline}
-            weather={weather}
-            nowMs={nowMs}
-            autoSyncIntervalMinutes={autoSyncIntervalMinutes}
-            lastAutoUpdateAt={lastAutoUpdateAt}
-            nextAutoUpdateMs={nextAutoUpdateMs}
-            isAutoRefreshing={isAutoRefreshing}
-            onChangeAutoSyncInterval={handleChangeAutoSyncInterval}
-            onTriggerAutoRefresh={runScheduledAutoSync}
-          />
-        </Suspense>
+            {/* হোম স্ক্রিনের ৫টি আলাদা রাউট কার্ড: চাষ টিপস, ফসলের টিপস, রোগ স্ক্যান, ফলন বালাই রাডার ও মাঠ সহায়ক */}
+            <HomeFeatureRoutesGrid
+              lang={lang}
+              tipsCount={tips.length}
+              bookmarkedTipsCount={tips.filter((tip) => tip.bookmarked).length}
+              cropsCount={CROP_CALENDAR_DATA.length}
+              activeCrop={activeCropItem}
+              activeCropElapsedDays={activeCropElapsedDays}
+              diagnosesCount={diagnoses.length}
+              pendingScansCount={pendingScans.length}
+              districtName={weather?.location.districtName ?? DISTRICT_PRESETS[0].name[lang]}
+              yieldPredictionsCount={dbStats.yieldPredictionsCount}
+              currentTimeAdvisory={currentTimeAdvisory}
+              onOpenSubRoute={(routeId) => handleOpenSubRoute(routeId, 'home')}
+            />
 
-        {/* জিপিএস অবস্থান ও আবহাওয়া সতর্কতা */}
-        <WeatherAlertSection
-          t={t}
-          lang={lang}
-          weather={weather}
-          isLoading={isWeatherLoading}
-          pushEnabled={pushEnabled}
-          notificationLogs={notificationLogs}
-          onUpdateLocation={handleUpdateLocation}
-          onTogglePush={handleTogglePush}
-          onSendPushAlert={handleSendPushAlert}
-        />
+            {/* প্রতিদিনের কৃষি খবর ও আপডেট (নতুন খবর প্রকাশ ও রিফ্রেশ সুবিধা সহ) */}
+            <DailyAgriNewsSection
+              lang={lang}
+              isOnline={isOnline}
+              weather={weather}
+              lastAutoUpdateAt={lastAutoUpdateAt}
+              isRefreshing={isAutoRefreshing}
+              onRefreshNews={runScheduledAutoSync}
+              onOpenCropFeature={(sectionId) => scrollToElementOnPage('crops', sectionId)}
+            />
 
-        {/* ধাপভিত্তিক ফসল পরামর্শ ও প্রতিটি ফসলের নির্দিষ্ট বিস্তারিত পেজ */}
-        <Suspense fallback={<SectionSkeleton />}>
-          <CropCalendarSection
-            t={t}
-            lang={lang}
-            selectedCropId={activeCropId}
-            onSelectCropId={handleSelectActiveCrop}
-            plantingDate={activeCropSowDate}
-            onPlantingDateChange={handleChangeActiveSowDate}
-            viewMode={cropViewMode}
-            onViewModeChange={setCropViewMode}
-            completedStageKeys={completedStageKeys}
-            onToggleStageComplete={handleToggleStageComplete}
-            onOpenTool={(tool) => handleNavigate(tool)}
-          />
-        </Suspense>
+            {/* জিপিএস অবস্থান ও আবহাওয়া সতর্কতা ও নোটিফিকেশন লগ */}
+            <WeatherAlertSection
+              t={t}
+              lang={lang}
+              weather={weather}
+              isLoading={isWeatherLoading}
+              pushEnabled={pushEnabled}
+              notificationLogs={notificationLogs}
+              onUpdateLocation={handleUpdateLocation}
+              onTogglePush={handleTogglePush}
+              onSendPushAlert={handleSendPushAlert}
+            />
+          </>
+        )}
 
-        {/* ক্যামেরায় ফসলের রোগ শনাক্তকরণ */}
-        <Suspense fallback={<SectionSkeleton />}>
-          <DiseaseScannerSection
-            t={t}
-            lang={lang}
-            isOnline={isOnline}
-            weather={weather}
-            savedDiagnoses={diagnoses}
-            pendingScans={pendingScans}
-            onDiagnosesChange={(next) => {
-              setDiagnoses(next);
-              refreshStats();
-            }}
-            onPendingScansChange={(next) => {
-              setPendingScans(next);
-              refreshStats();
-            }}
-          />
-        </Suspense>
+        {activePage === 'crops' && !activeSubRoute && (
+          <>
+            {/* দ্বিতীয় পেজ (ফসলের টিপস) — ফসলের সব ফিচারের কুইক নেভিগেশন বার */}
+            <section className="border-b border-zinc-200 bg-white py-5 sm:py-6">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-xs font-bold tracking-wide text-[#4D6A1F]">
+                      {lang === 'bn'
+                        ? 'সম্পূর্ণ ফসল সমাধান কেন্দ্র'
+                        : lang === 'hi'
+                        ? 'संपूर्ण फसल समाधान केंद्र'
+                        : 'Complete Crop Management Hub'}
+                    </p>
+                    <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl text-balance">
+                      {lang === 'bn'
+                        ? 'ফসলের পরামর্শ, রোগ স্ক্যানার ও সব ফসলের ফিচার'
+                        : lang === 'hi'
+                        ? 'फसल सलाह, रोग स्कैनर और सभी फसल सुविधाएं'
+                        : 'Crop Advice, Disease Scanner & All Crop Features'}
+                    </h1>
+                  </div>
+                  <span className="font-mono-tabular text-xs font-semibold text-zinc-600">
+                    {tips.length} {t.nav.tips} · {CROP_CALENDAR_DATA.length} {t.nav.cropsTab}
+                  </span>
+                </div>
 
-        {/* বহু-ধাপ ফলন পূর্বাভাস এআই ও আঞ্চলিক বালাই রাডার */}
-        <Suspense fallback={<SectionSkeleton />}>
-          <YieldAndPestIntelligenceSection
-            lang={lang}
-            isOnline={isOnline}
-            weather={weather}
-            savedDiagnoses={diagnoses}
-            onDataChange={refreshStats}
-          />
-        </Suspense>
+                <div className="flex flex-wrap items-center gap-2">
+                  {[
+                    {
+                      routeId: 'cultivation-tips' as CropFeatureRouteId,
+                      label: CROP_SUB_ROUTE_CATALOG[0].title[lang],
+                      icon: <Sprout className="h-4 w-4 text-[#2E7D32]" />,
+                    },
+                    {
+                      routeId: 'crop-calendar' as CropFeatureRouteId,
+                      label: CROP_SUB_ROUTE_CATALOG[1].title[lang],
+                      icon: <Calendar className="h-4 w-4 text-[#2E7D32]" />,
+                    },
+                    {
+                      routeId: 'disease-scanner' as CropFeatureRouteId,
+                      label: CROP_SUB_ROUTE_CATALOG[2].title[lang],
+                      icon: <Camera className="h-4 w-4 text-[#2E7D32]" />,
+                    },
+                    {
+                      routeId: 'yield-pest-radar' as CropFeatureRouteId,
+                      label: CROP_SUB_ROUTE_CATALOG[3].title[lang],
+                      icon: <Radar className="h-4 w-4 text-[#4D6A1F]" />,
+                    },
+                    {
+                      routeId: 'field-assistant' as CropFeatureRouteId,
+                      label: CROP_SUB_ROUTE_CATALOG[4].title[lang],
+                      icon: <ShieldCheck className="h-4 w-4 text-[#4D6A1F]" />,
+                    },
+                  ].map((item) => (
+                    <a
+                      key={item.routeId}
+                      href={getRouteHref('crops', item.routeId)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleOpenSubRoute(item.routeId, 'crops');
+                      }}
+                      className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-zinc-200 bg-[#F8F9F7] px-3.5 py-2 text-xs font-semibold text-zinc-800 hover:border-[#2E7D32] hover:bg-[#EEF4EA] whitespace-nowrap shrink-0"
+                    >
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </section>
 
-        {/* মৌসুমভিত্তিক ফসল পরিচর্যা টিপস */}
-        <Suspense fallback={<SectionSkeleton />}>
-          <CropTipsSection
-            t={t}
-            lang={lang}
-            tips={tips}
-            onToggleBookmark={handleToggleBookmark}
-          />
-        </Suspense>
+            {/* ১. মৌসুমভিত্তিক ফসল পরিচর্যা টিপস */}
+            <Suspense fallback={<SectionSkeleton />}>
+              <CropTipsSection
+                t={t}
+                lang={lang}
+                tips={tips}
+                onToggleBookmark={handleToggleBookmark}
+              />
+            </Suspense>
+
+            {/* ২. ধাপভিত্তিক ফসল পরামর্শ ও প্রতিটি ফসলের নির্দিষ্ট বিস্তারিত পেজ */}
+            <Suspense fallback={<SectionSkeleton />}>
+              <CropCalendarSection
+                t={t}
+                lang={lang}
+                selectedCropId={activeCropId}
+                onSelectCropId={handleSelectActiveCrop}
+                plantingDate={activeCropSowDate}
+                onPlantingDateChange={handleChangeActiveSowDate}
+                viewMode={cropViewMode}
+                onViewModeChange={setCropViewMode}
+                completedStageKeys={completedStageKeys}
+                onToggleStageComplete={handleToggleStageComplete}
+                onBackToHome={() => handleSelectPage('home')}
+                onOpenTool={(tool) => handleNavigate(tool)}
+              />
+            </Suspense>
+
+            {/* ৩. ক্যামেরায় ফসলের রোগ শনাক্তকরণ */}
+            <Suspense fallback={<SectionSkeleton />}>
+              <DiseaseScannerSection
+                t={t}
+                lang={lang}
+                isOnline={isOnline}
+                weather={weather}
+                savedDiagnoses={diagnoses}
+                pendingScans={pendingScans}
+                onDiagnosesChange={(next) => {
+                  setDiagnoses(next);
+                  refreshStats();
+                }}
+                onPendingScansChange={(next) => {
+                  setPendingScans(next);
+                  refreshStats();
+                }}
+              />
+            </Suspense>
+
+            {/* ৪. বহু-ধাপ ফলন পূর্বাভাস এআই ও আঞ্চলিক বালাই রাডার */}
+            <Suspense fallback={<SectionSkeleton />}>
+              <YieldAndPestIntelligenceSection
+                lang={lang}
+                isOnline={isOnline}
+                weather={weather}
+                savedDiagnoses={diagnoses}
+                onDataChange={refreshStats}
+              />
+            </Suspense>
+
+            {/* ৫. স্মার্ট কৃষি সেবা: দিনের সময়, স্প্রে নিরাপত্তা, সেচ ও হেল্পলাইন */}
+            <Suspense fallback={<SectionSkeleton />}>
+              <AgroServiceHubSection
+                lang={lang}
+                isOnline={isOnline}
+                weather={weather}
+                nowMs={nowMs}
+                autoSyncIntervalMinutes={autoSyncIntervalMinutes}
+                lastAutoUpdateAt={lastAutoUpdateAt}
+                nextAutoUpdateMs={nextAutoUpdateMs}
+                isAutoRefreshing={isAutoRefreshing}
+                onChangeAutoSyncInterval={handleChangeAutoSyncInterval}
+                onTriggerAutoRefresh={runScheduledAutoSync}
+              />
+            </Suspense>
+          </>
+        )}
+
+        {activePage === 'profile' && !activeSubRoute && (
+          <Suspense fallback={<SectionSkeleton />}>
+            <FarmerProfileSection
+              t={t}
+              lang={lang}
+              isOnline={isOnline}
+              isSyncing={isSyncing}
+              weather={weather}
+              dbStats={dbStats}
+              tips={tips}
+              diagnoses={diagnoses}
+              pendingScans={pendingScans}
+              pushEnabled={pushEnabled}
+              autoSyncIntervalMinutes={autoSyncIntervalMinutes}
+              activeCropId={activeCropId}
+              activeCropSowDate={activeCropSowDate}
+              visitorStats={visitorStats}
+              onChangeLanguage={handleLanguageChange}
+              onTogglePush={handleTogglePush}
+              onChangeAutoSyncInterval={handleChangeAutoSyncInterval}
+              onSyncNow={handleSyncAll}
+              onOpenOfflineDrawer={() => setDrawerOpen(true)}
+              onSelectActiveCrop={handleSelectActiveCrop}
+              onChangeActiveSowDate={handleChangeActiveSowDate}
+              onOpenCropFeature={(sectionId) => scrollToElementOnPage('crops', sectionId)}
+              onOpenActiveCropPage={() => handleOpenCropDedicatedPage(activeCropId)}
+            />
+          </Suspense>
+        )}
+        </div>
       </main>
 
       {/* ৪. ফুটার */}
@@ -1757,73 +2097,50 @@ const KrishiAppContent: React.FC = () => {
           <p className="mt-1">{t.heroEyebrow}</p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs sm:text-sm font-medium text-zinc-600">
             <a
-              href="#agro-service"
+              href={getRouteHref('home', null)}
               onClick={(e) => {
                 e.preventDefault();
-                setActiveSection('weather');
-                document
-                  .getElementById('agro-service')
-                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                handleSelectPage('home');
               }}
               className="hover:text-[#2E7D32] hover:underline underline-offset-4"
             >
-              {lang === 'bn' ? 'মাঠ সহায়ক' : lang === 'hi' ? 'खेत सलाह' : 'Field Hub'}
+              {t.nav.home}
             </a>
+            {CROP_SUB_ROUTE_CATALOG.map((routeItem) => (
+              <a
+                key={routeItem.id}
+                href={getRouteHref('crops', routeItem.id)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleOpenSubRoute(routeItem.id);
+                }}
+                className="hover:text-[#2E7D32] hover:underline underline-offset-4"
+              >
+                {routeItem.title[lang]}
+              </a>
+            ))}
             <a
-              href="#weather"
+              href={getRouteHref('profile', null)}
               onClick={(e) => {
                 e.preventDefault();
-                handleNavigate('weather');
+                handleSelectPage('profile');
               }}
               className="hover:text-[#2E7D32] hover:underline underline-offset-4"
             >
-              {t.nav.weather}
-            </a>
-            <a
-              href="#calendar"
-              onClick={(e) => {
-                e.preventDefault();
-                handleNavigate('calendar');
-              }}
-              className="hover:text-[#2E7D32] hover:underline underline-offset-4"
-            >
-              {t.nav.calendar}
-            </a>
-            <a
-              href="#scanner"
-              onClick={(e) => {
-                e.preventDefault();
-                handleNavigate('scanner');
-              }}
-              className="hover:text-[#2E7D32] hover:underline underline-offset-4"
-            >
-              {t.nav.scanner}
-            </a>
-            <a
-              href="#yield-radar"
-              onClick={(e) => {
-                e.preventDefault();
-                handleNavigate('yield-radar');
-              }}
-              className="hover:text-[#2E7D32] hover:underline underline-offset-4"
-            >
-              {t.nav.yieldRadar}
-            </a>
-            <a
-              href="#tips"
-              onClick={(e) => {
-                e.preventDefault();
-                handleNavigate('tips');
-              }}
-              className="hover:text-[#2E7D32] hover:underline underline-offset-4"
-            >
-              {t.nav.tips}
+              {lang === 'bn' ? 'প্রোফাইল' : lang === 'hi' ? 'प्रोफ़ाइल' : 'Profile'}
             </a>
           </div>
         </div>
       </footer>
 
       <AudioPlayerBar t={t} />
+
+      <BottomNavigationBar
+        t={t}
+        lang={lang}
+        activePage={activePage}
+        onSelectPage={handleSelectPage}
+      />
 
       {drawerOpen && (
         <Suspense fallback={null}>

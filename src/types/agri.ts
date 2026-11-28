@@ -1,5 +1,20 @@
 export type AppLanguage = 'bn' | 'hi' | 'en';
 
+export type AppPageTab = 'home' | 'crops' | 'profile';
+
+export type CropFeatureRouteId =
+  | 'cultivation-tips'
+  | 'crop-calendar'
+  | 'disease-scanner'
+  | 'yield-pest-radar'
+  | 'field-assistant';
+
+export interface AppRouteState {
+  parentPage: AppPageTab;
+  subRoute: CropFeatureRouteId | null;
+  entryParent: AppPageTab;
+}
+
 export type BottomMainTab = 'home' | 'weather' | 'crops';
 
 export type NavSection = 'home' | 'weather' | 'calendar' | 'scanner' | 'yield-radar' | 'tips';
@@ -332,4 +347,20 @@ export interface RegionalPestRadarResult {
   audioSummary: string;
 }
 
+export interface DailyAgriNewsItem {
+  id: string;
+  title: string;
+  summary: string;
+  category: 'weather' | 'crop' | 'govt' | 'fertilizer';
+  source: string;
+  publishedDate: string;
+  isCustom?: boolean;
+}
 
+export interface FarmerProfileData {
+  farmerName: string;
+  phone: string;
+  villageOrUnion: string;
+  farmArea: string;
+  farmUnit: 'bigha' | 'decimal' | 'acre';
+}
