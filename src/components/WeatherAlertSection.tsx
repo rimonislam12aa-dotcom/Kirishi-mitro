@@ -195,7 +195,7 @@ export const WeatherAlertSection: React.FC<WeatherAlertSectionProps> = ({
               type="button"
               onClick={handleDetectGps}
               disabled={isDetectingGps}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-emerald-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-800 disabled:opacity-60 whitespace-nowrap shrink-0"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#2E7D32] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#256628] disabled:opacity-60 whitespace-nowrap shrink-0"
             >
               <Compass className={`h-4 w-4 ${isDetectingGps ? 'animate-spin' : ''}`} />
               {isDetectingGps ? t.weather.detectingGps : t.weather.detectGps}
@@ -208,7 +208,7 @@ export const WeatherAlertSection: React.FC<WeatherAlertSectionProps> = ({
               id="district-select"
               onChange={(e) => handleSelectDistrict(e.target.value)}
               defaultValue=""
-              className="min-h-[44px] w-full sm:w-auto rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:border-emerald-800 focus:outline-none"
+              className="min-h-[44px] w-full sm:w-auto rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:border-[#2E7D32] focus:outline-none"
             >
               <option value="" disabled>
                 {t.weather.selectDistrict}
@@ -224,9 +224,9 @@ export const WeatherAlertSection: React.FC<WeatherAlertSectionProps> = ({
               type="button"
               onClick={handleListenWeather}
               disabled={!weather}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-stone-300 bg-stone-50 px-4 py-2 text-sm font-medium text-stone-800 transition-colors hover:bg-stone-100 disabled:opacity-50 whitespace-nowrap shrink-0"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-zinc-300 bg-[#F4F5F2] px-4 py-2 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-200/70 disabled:opacity-50 whitespace-nowrap shrink-0"
             >
-              <Volume2 className="h-4 w-4 text-emerald-900" />
+              <Volume2 className="h-4 w-4 text-[#2E7D32]" />
               {t.weather.listenWeather}
             </button>
           </div>
@@ -235,7 +235,7 @@ export const WeatherAlertSection: React.FC<WeatherAlertSectionProps> = ({
         {gpsStatusMsg && (
           <p
             className={`mt-3 text-xs font-semibold ${
-              gpsStatusMsg.tone === 'ok' ? 'text-emerald-800' : 'text-amber-800'
+              gpsStatusMsg.tone === 'ok' ? 'text-[#2E7D32]' : 'text-amber-800'
             }`}
           >
             {gpsStatusMsg.text}
@@ -245,13 +245,13 @@ export const WeatherAlertSection: React.FC<WeatherAlertSectionProps> = ({
         {/* Main Weather + Alert Split */}
         {isLoading && !weather ? (
           <div className="mt-8 grid gap-6 lg:grid-cols-12">
-            <div className="h-56 animate-pulse rounded-xl bg-stone-100 lg:col-span-7" />
-            <div className="h-56 animate-pulse rounded-xl bg-stone-100 lg:col-span-5" />
+            <div className="h-56 animate-pulse rounded-xl bg-zinc-100 lg:col-span-7" />
+            <div className="h-56 animate-pulse rounded-xl bg-zinc-100 lg:col-span-5" />
           </div>
         ) : weather ? (
           <div className="mt-8 grid items-stretch gap-8 lg:grid-cols-12">
             {/* Left: Current Conditions + 5-Day Strip */}
-            <div className="rounded-xl border border-stone-200 bg-[#F7F8F5] p-4 sm:p-6 lg:col-span-7">
+            <div className="rounded-2xl border border-zinc-200 bg-[#F4F5F2] p-4 sm:p-6 lg:col-span-7">
               <div className="flex flex-wrap items-start justify-between gap-4 border-b border-stone-200 pb-5">
                 <div>
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-stone-600">
@@ -422,7 +422,7 @@ export const WeatherAlertSection: React.FC<WeatherAlertSectionProps> = ({
                         <button
                           type="button"
                           onClick={handleTestPush}
-                          className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border border-emerald-800 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-950 hover:bg-emerald-100 whitespace-nowrap shrink-0"
+                          className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border border-[#2E7D32]/30 bg-[#EEF4EA] px-3 py-1.5 text-xs font-semibold text-[#1E5622] hover:bg-[#E1ECDA] whitespace-nowrap shrink-0"
                         >
                           <BellRing className="h-3.5 w-3.5" />
                           {t.weather.testPush}
@@ -432,7 +432,7 @@ export const WeatherAlertSection: React.FC<WeatherAlertSectionProps> = ({
                           onClick={handleDisablePush}
                           title={t.weather.disablePush}
                           aria-label={t.weather.disablePush}
-                          className="inline-flex min-h-[38px] items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50 whitespace-nowrap shrink-0"
+                          className="inline-flex min-h-[38px] items-center gap-1 rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 whitespace-nowrap shrink-0"
                         >
                           <BellOff className="h-3.5 w-3.5" />
                         </button>
@@ -441,7 +441,7 @@ export const WeatherAlertSection: React.FC<WeatherAlertSectionProps> = ({
                       <button
                         type="button"
                         onClick={handleEnablePush}
-                        className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg bg-emerald-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 whitespace-nowrap shrink-0"
+                        className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg bg-[#2E7D32] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#256628] whitespace-nowrap shrink-0"
                       >
                         <Bell className="h-3.5 w-3.5" />
                         {t.weather.enablePush}

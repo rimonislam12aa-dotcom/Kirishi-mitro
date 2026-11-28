@@ -3,6 +3,13 @@
 @layer base {
   :root {
     font-family: "Hind Siliguri", "Noto Sans Devanagari", "Plus Jakarta Sans", system-ui, sans-serif;
+    --km-bg: #f4f5f2;
+    --km-surface: #ffffff;
+    --km-surface-muted: #f8f9f7;
+    --km-green: #2e7d32;
+    --km-green-dark: #256628;
+    --km-olive: #4d6a1f;
+    --km-tint: #eef4ea;
   }
 
   html {
@@ -14,8 +21,8 @@
   }
 
   body {
-    background-color: #f7f8f5;
-    color: #1c1917;
+    background-color: #f4f5f2;
+    color: #18181b;
     min-height: 100dvh;
     font-size: 1rem;
     line-height: 1.5;

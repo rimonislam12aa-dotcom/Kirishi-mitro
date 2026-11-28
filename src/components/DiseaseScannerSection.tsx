@@ -484,7 +484,7 @@ export const DiseaseScannerSection: React.FC<DiseaseScannerSectionProps> = ({
   };
 
   return (
-    <section id="scanner" className="scroll-mt-20 border-b border-stone-200 bg-[#F7F8F5] py-10 sm:py-12">
+    <section id="scanner" className="scroll-mt-20 border-b border-zinc-200 bg-[#F4F5F2] py-10 sm:py-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl">
           <h2 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl text-balance">
@@ -552,7 +552,7 @@ export const DiseaseScannerSection: React.FC<DiseaseScannerSectionProps> = ({
                 <button
                   type="button"
                   onClick={startCamera}
-                  className="inline-flex min-h-[44px] flex-1 min-w-[130px] items-center justify-center gap-2 rounded-lg bg-emerald-900 px-3.5 py-2 text-sm font-semibold text-white hover:bg-emerald-800 text-center"
+                  className="inline-flex min-h-[44px] flex-1 min-w-[130px] items-center justify-center gap-2 rounded-lg bg-[#2E7D32] px-3.5 py-2 text-sm font-semibold text-white hover:bg-[#256628] text-center"
                 >
                   <Camera className="h-4 w-4 shrink-0" />
                   <span>{t.scanner.startCamera}</span>
@@ -563,7 +563,7 @@ export const DiseaseScannerSection: React.FC<DiseaseScannerSectionProps> = ({
                     type="button"
                     onClick={captureFromCamera}
                     disabled={!cameraReady}
-                    className="inline-flex min-h-[44px] flex-1 min-w-[130px] items-center justify-center gap-2 rounded-lg bg-emerald-900 px-3.5 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50 text-center"
+                    className="inline-flex min-h-[44px] flex-1 min-w-[130px] items-center justify-center gap-2 rounded-lg bg-[#2E7D32] px-3.5 py-2 text-sm font-semibold text-white hover:bg-[#256628] disabled:opacity-50 text-center"
                   >
                     <Camera className="h-4 w-4 shrink-0" />
                     <span>{t.scanner.capturePhoto}</span>
@@ -669,8 +669,8 @@ export const DiseaseScannerSection: React.FC<DiseaseScannerSectionProps> = ({
                         onClick={() => toggleSymptomTag(tag)}
                         className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
                           active
-                            ? 'border-emerald-800 bg-emerald-900 text-white'
-                            : 'border-stone-300 bg-stone-50 text-stone-700 hover:bg-stone-100'
+                            ? 'border-[#2E7D32] bg-[#2E7D32] text-white'
+                            : 'border-zinc-300 bg-[#F4F5F2] text-zinc-700 hover:bg-zinc-200/70'
                         }`}
                       >
                         {tag}
@@ -685,7 +685,7 @@ export const DiseaseScannerSection: React.FC<DiseaseScannerSectionProps> = ({
                   type="button"
                   onClick={handleAnalyze}
                   disabled={!previewDataUrl || isAnalyzing}
-                  className="flex w-full min-h-[46px] items-center justify-center gap-2 rounded-lg bg-emerald-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex w-full min-h-[46px] items-center justify-center gap-2 rounded-lg bg-[#2E7D32] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#256628] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isAnalyzing ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -812,7 +812,7 @@ export const DiseaseScannerSection: React.FC<DiseaseScannerSectionProps> = ({
                   <button
                     type="button"
                     onClick={() => handleListenDiagnosis(activeResult)}
-                    className="inline-flex min-h-[42px] items-center gap-2 rounded-lg bg-emerald-900 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 whitespace-nowrap shrink-0"
+                    className="inline-flex min-h-[42px] items-center gap-2 rounded-lg bg-[#2E7D32] px-4 py-2 text-sm font-semibold text-white hover:bg-[#256628] whitespace-nowrap shrink-0"
                   >
                     <Volume2 className="h-4 w-4" />
                     {t.scanner.listenDiagnosis}
@@ -960,7 +960,7 @@ export const DiseaseScannerSection: React.FC<DiseaseScannerSectionProps> = ({
                           type="button"
                           onClick={() => handleProcessQueuedScan(qItem)}
                           disabled={!isOnline || processingQueueId === qItem.id}
-                          className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg bg-emerald-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 disabled:opacity-50 whitespace-nowrap"
+                          className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg bg-[#2E7D32] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#256628] disabled:opacity-50 whitespace-nowrap"
                         >
                           {processingQueueId === qItem.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />

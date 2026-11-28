@@ -26,6 +26,7 @@ export type Translations = {
   nav: {
     home: string;
     weather: string;
+    cropsTab: string;
     calendar: string;
     scanner: string;
     yieldRadar: string;
@@ -373,7 +374,8 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
     "nav": {
       "home": "হোম",
       "weather": "আবহাওয়া",
-      "calendar": "ফসল সময়",
+      "cropsTab": "ফসল",
+      "calendar": "ফসল পরামর্শ",
       "scanner": "রোগ স্ক্যান",
       "yieldRadar": "ফলন ও বালাই রাডার",
       "tips": "চাষের টিপস",
@@ -382,10 +384,10 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
     "home": {
       "greeting": "আসসালামু আলাইকুম",
       "subGreeting": "আজ আপনার জমির জন্য দরকারি সব তথ্য এক জায়গায়",
-      "menuHeading": "আপনি কী দেখতে চান? নিচে চাপ দিন",
-      "menuSubheading": "যেকোনো একটি সেবা বেছে নিলেই সহজভাবে বিস্তারিত দেখতে পাবেন।",
+      "menuHeading": "সব কৃষি সেবা কার্ড",
+      "menuSubheading": "যেকোনো একটি কার্ডে চাপ দিন—সহজ ও পরিচ্ছন্নভাবে বিস্তারিত খুলবে।",
       "backToHome": "মূল পাতায় ফিরুন",
-      "openFeature": "দেখুন",
+      "openFeature": "খুলুন",
       "todayAtGlance": "আজকের আবহাওয়া",
       "rainChanceLabel": "বৃষ্টির সম্ভাবনা",
       "airQualityLabel": "বাতাসের মান",
@@ -395,8 +397,8 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "yieldRadarDesc": "ধাপভিত্তিক ছবিতে ফলন হিসাব ও আঞ্চলিক বালাই আগাম সতর্কতা",
       "weatherTitle": "আবহাওয়া ও ঝড়-বৃষ্টি",
       "weatherDesc": "আজ ও ৫ দিনের বৃষ্টি, তাপমাত্রা ও সতর্কতা",
-      "calendarTitle": "কখন লাগাবেন ও তুলবেন",
-      "calendarDesc": "মাস অনুযায়ী ফসল রোপণ ও কাটার তারিখ জানুন",
+      "calendarTitle": "ধাপভিত্তিক ফসল পরামর্শ",
+      "calendarDesc": "প্রতিটি ফসলের আলাদা পেজে সময়সূচি ও ধাপ অনুযায়ী কাজ দেখুন",
       "tipsTitle": "চাষ ও সারের নিয়ম",
       "tipsDesc": "বিঘা প্রতি সার, বীজ ও সেচের সহজ নির্দেশনা",
       "feedbackTitle": "প্রশ্ন ও যোগাযোগ",
@@ -736,7 +738,8 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
     "nav": {
       "home": "होम",
       "weather": "मौसम",
-      "calendar": "फसल समय",
+      "cropsTab": "फसल",
+      "calendar": "फसल सलाह",
       "scanner": "रोग स्कैन",
       "yieldRadar": "उपज व कीट रडार",
       "tips": "फसल टिप्स",
@@ -745,10 +748,10 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
     "home": {
       "greeting": "अस्सलामु अलैकुम",
       "subGreeting": "आपके खेत के लिए जरूरी सारी जानकारी एक जगह",
-      "menuHeading": "आप क्या देखना चाहते हैं? नीचे चुनें",
-      "menuSubheading": "किसी भी विकल्प पर टैप करें और आसानी से पूरी जानकारी पाएं।",
+      "menuHeading": "सभी कृषि सेवा कार्ड",
+      "menuSubheading": "किसी भी कार्ड पर टैप करें और चरणबद्ध जानकारी देखें।",
       "backToHome": "मुख्य पेज पर लौटें",
-      "openFeature": "देखें",
+      "openFeature": "खोलें",
       "todayAtGlance": "आज का मौसम",
       "rainChanceLabel": "बारिश की संभावना",
       "airQualityLabel": "हवा की गुणवत्ता",
@@ -758,8 +761,8 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "yieldRadarDesc": "चरणवार फोटो से उपज अनुमान और क्षेत्रीय कीट प्रकोप अलर्ट",
       "weatherTitle": "मौसम व बारिश अलर्ट",
       "weatherDesc": "आज व 5 दिन का तापमान, बारिश और चेतावनी",
-      "calendarTitle": "बुवाई व कटाई का समय",
-      "calendarDesc": "किस महीने कौन सी फसल लगाएं और कब काटें",
+      "calendarTitle": "चरणबद्ध फसल सलाह",
+      "calendarDesc": "हर फसल के अलग पेज पर बुवाई समय व चरणवार कार्य देखें",
       "tipsTitle": "खेती और खाद सलाह",
       "tipsDesc": "खाद, बीज और सिंचाई के आसान चरण",
       "feedbackTitle": "सवाल और संपर्क",
@@ -1099,7 +1102,8 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
     "nav": {
       "home": "Home",
       "weather": "Weather",
-      "calendar": "Calendar",
+      "cropsTab": "Crops",
+      "calendar": "Crop Advisory",
       "scanner": "Scan Leaf",
       "yieldRadar": "Yield & Radar",
       "tips": "Crop Tips",
@@ -1108,8 +1112,8 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
     "home": {
       "greeting": "Assalamu Alaikum",
       "subGreeting": "Everything you need for your farm in one simple place",
-      "menuHeading": "What would you like to check?",
-      "menuSubheading": "Tap any option below for clear, step-by-step farming help.",
+      "menuHeading": "All Farm Services",
+      "menuSubheading": "Tap any card below to view clear, step-by-step crop and field guidance.",
       "backToHome": "Back to Home",
       "openFeature": "Open",
       "todayAtGlance": "Today’s Weather",
@@ -1121,8 +1125,8 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
       "yieldRadarDesc": "Multi-stage photo yield forecast & 5–14 day regional pest outbreak alerts",
       "weatherTitle": "Weather & Alerts",
       "weatherDesc": "Live temperature, 5-day rain forecast & storm alerts",
-      "calendarTitle": "Planting & Harvest",
-      "calendarDesc": "Check what to plant now and calculate harvest dates",
+      "calendarTitle": "Step-by-Step Crop Advisory",
+      "calendarDesc": "Open each crop’s dedicated page with stage schedules and field tasks",
       "tipsTitle": "Farming & Fertilizer",
       "tipsDesc": "Easy fertilizer, seed, and irrigation guides",
       "feedbackTitle": "Ask & Contact",

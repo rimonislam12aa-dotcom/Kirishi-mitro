@@ -194,15 +194,15 @@ export const QrCodeDisplay: React.FC<QrCodeDisplayProps> = ({ t, variant = 'card
         </div>
 
         {/* High-Contrast Unobstructed QR Plate */}
-        <div className="mt-4 flex flex-col items-center rounded-xl border border-stone-200 bg-[#F7F8F5] px-4 py-5">
+        <div className="mt-4 flex flex-col items-center rounded-xl border border-zinc-200 bg-[#F4F5F2] px-4 py-5">
           <QrSvgMatrix
             value={targetUrl}
             sizePx={variant === 'card' ? 220 : 192}
             label={`${t.brandName} QR Code`}
           />
-          <p className="mt-3 text-center text-xs sm:text-sm font-medium text-stone-800">{t.qr.scanHint}</p>
-          <p className="mt-1 text-center text-xs text-stone-600">{t.qr.fastScanBadge}</p>
-          <p className="mt-1 max-w-full truncate font-mono-tabular text-xs text-stone-500">
+          <p className="mt-3 text-center text-xs sm:text-sm font-medium text-zinc-800">{t.qr.scanHint}</p>
+          <p className="mt-1 text-center text-xs text-zinc-600">{t.qr.fastScanBadge}</p>
+          <p className="mt-1 max-w-full truncate font-mono-tabular text-xs text-zinc-500">
             {targetUrl}
           </p>
         </div>
@@ -212,7 +212,7 @@ export const QrCodeDisplay: React.FC<QrCodeDisplayProps> = ({ t, variant = 'card
           <button
             type="button"
             onClick={() => setZoomOpen(true)}
-            className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-lg bg-emerald-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-800 text-center"
+            className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-lg bg-[#2E7D32] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#256628] text-center"
           >
             <Maximize2 className="h-3.5 w-3.5 shrink-0" />
             <span>{t.qr.zoomBtn}</span>
@@ -221,9 +221,9 @@ export const QrCodeDisplay: React.FC<QrCodeDisplayProps> = ({ t, variant = 'card
           <button
             type="button"
             onClick={handleDownloadPng}
-            className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 transition-colors hover:bg-stone-50 text-center"
+            className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 transition-colors hover:bg-zinc-50 text-center"
           >
-            <Download className="h-3.5 w-3.5 text-emerald-900 shrink-0" />
+            <Download className="h-3.5 w-3.5 text-[#2E7D32] shrink-0" />
             <span>{t.qr.downloadPngBtn}</span>
           </button>
 

@@ -266,9 +266,9 @@ export const AgroServiceHubSection: React.FC<AgroServiceHubSectionProps> = ({
             <button
               type="button"
               onClick={handleListenAdvisory}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-emerald-800 bg-emerald-50 px-4 py-2 text-xs sm:text-sm font-semibold text-emerald-950 transition-colors hover:bg-emerald-100"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-[#2E7D32]/30 bg-[#EEF4EA] px-4 py-2 text-xs sm:text-sm font-semibold text-[#1E5622] transition-colors hover:bg-[#E1ECDA]"
             >
-              <Volume2 className="h-4 w-4 shrink-0 text-emerald-900" />
+              <Volume2 className="h-4 w-4 shrink-0 text-[#2E7D32]" />
               <span>{l.listenAdvisoryBtn}</span>
             </button>
 
@@ -276,7 +276,7 @@ export const AgroServiceHubSection: React.FC<AgroServiceHubSectionProps> = ({
               type="button"
               onClick={onTriggerAutoRefresh}
               disabled={!isOnline || isAutoRefreshing}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-emerald-900 px-4 py-2 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#2E7D32] px-4 py-2 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-[#256628] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <RefreshCw className={`h-4 w-4 shrink-0 ${isAutoRefreshing ? 'animate-spin' : ''}`} />
               <span>{isAutoRefreshing ? l.refreshingBtn : l.refreshNowBtn}</span>
@@ -285,23 +285,23 @@ export const AgroServiceHubSection: React.FC<AgroServiceHubSectionProps> = ({
         </div>
 
         {/* Auto-Update Status & Frequency Bar */}
-        <div className="mt-6 flex flex-col gap-3 rounded-xl border border-stone-200 bg-[#F7F8F5] p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs sm:text-sm text-stone-700">
-            <div className="flex items-center gap-2 font-semibold text-emerald-950">
-              <Clock className="h-4 w-4 shrink-0 text-emerald-800" />
+        <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-[#F4F5F2] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs sm:text-sm text-zinc-700">
+            <div className="flex items-center gap-2 font-semibold text-[#1E5622]">
+              <Clock className="h-4 w-4 shrink-0 text-[#2E7D32]" />
               <span>{l.autoUpdateLabel}</span>
             </div>
 
             <div className="flex items-center gap-1.5">
-              <span className="text-stone-500">{l.lastUpdatedPrefix}:</span>
-              <span className="font-mono-tabular font-semibold text-stone-900">
+              <span className="text-zinc-500">{l.lastUpdatedPrefix}:</span>
+              <span className="font-mono-tabular font-semibold text-zinc-900">
                 {lastUpdatedText}
               </span>
             </div>
 
             <div className="flex items-center gap-1.5">
-              <span className="text-stone-500">{l.nextUpdatePrefix}:</span>
-              <span className="font-mono-tabular font-semibold text-emerald-900">
+              <span className="text-zinc-500">{l.nextUpdatePrefix}:</span>
+              <span className="font-mono-tabular font-semibold text-[#2E7D32]">
                 {countdownText}
               </span>
             </div>
@@ -335,9 +335,9 @@ export const AgroServiceHubSection: React.FC<AgroServiceHubSectionProps> = ({
           {/* Left 7 Cols: Dynamic Time-Slot Tasks + Live Spray Check + Monthly Agro Brief */}
           <div className="flex flex-col gap-5 lg:col-span-7">
             {/* 1. Time-Slot Field Guidance */}
-            <div className="rounded-xl border border-stone-200 bg-[#F7F8F5] p-5">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 pb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-900">
+            <div className="rounded-2xl border border-zinc-200 bg-[#F4F5F2] p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 pb-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#2E7D32]">
                   {l.nowWindowTitle}
                 </span>
                 <span className="font-mono-tabular text-xs font-semibold text-stone-700">
@@ -411,11 +411,11 @@ export const AgroServiceHubSection: React.FC<AgroServiceHubSectionProps> = ({
           </div>
 
           {/* Right 5 Cols: Interactive Reference Guide (Irrigation Stages / Soil Rules / Helplines) */}
-          <div className="flex flex-col rounded-xl border border-stone-200 bg-[#F7F8F5] p-4 sm:p-5 lg:col-span-5">
+          <div className="flex flex-col rounded-2xl border border-zinc-200 bg-[#F4F5F2] p-4 sm:p-5 lg:col-span-5">
             <div
               role="tablist"
               aria-label={l.sectionTitle}
-              className="grid grid-cols-3 gap-1 rounded-lg bg-stone-200/75 p-1"
+              className="grid grid-cols-3 gap-1 rounded-lg bg-zinc-200/75 p-1"
             >
               {(['irrigation', 'rules', 'helpline'] as ReferenceTab[]).map((tabKey) => {
                 const isActive = activeTab === tabKey;
@@ -495,7 +495,7 @@ export const AgroServiceHubSection: React.FC<AgroServiceHubSectionProps> = ({
                       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-stone-100 pt-2.5">
                         <a
                           href={`tel:${help.number.replace(/[^0-9+]/g, '')}`}
-                          className="inline-flex min-h-[38px] flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-800"
+                          className="inline-flex min-h-[38px] flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#2E7D32] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#256628]"
                         >
                           <PhoneCall className="h-3.5 w-3.5 shrink-0" />
                           <span>{l.callNowBtn}</span>

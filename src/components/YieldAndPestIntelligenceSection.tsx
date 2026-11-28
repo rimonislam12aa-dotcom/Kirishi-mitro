@@ -954,25 +954,25 @@ export const YieldAndPestIntelligenceSection: React.FC<YieldAndPestIntelligenceS
   return (
     <section
       id="yield-radar"
-      className="border-b border-stone-200 bg-[#F7F8F5] py-10 sm:py-14 scroll-mt-16"
+      className="border-b border-zinc-200 bg-[#F4F5F2] py-10 sm:py-14 scroll-mt-16"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section Header + Mode Switcher */}
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
-            <p className="text-xs font-semibold tracking-wide text-emerald-900 uppercase">
+            <p className="text-xs font-semibold tracking-wide text-[#2E7D32] uppercase">
               {c.eyebrow}
             </p>
-            <h2 className="mt-1.5 text-xl font-bold tracking-tight text-stone-900 sm:text-3xl text-balance">
+            <h2 className="mt-1.5 text-xl font-bold tracking-tight text-zinc-900 sm:text-3xl text-balance">
               {c.sectionTitle}
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-stone-600">{c.sectionSubtitle}</p>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-600">{c.sectionSubtitle}</p>
           </div>
 
           <div
             role="tablist"
             aria-label={c.sectionTitle}
-            className="inline-flex w-full md:w-auto rounded-xl border border-stone-200 bg-white p-1 shadow-xs"
+            className="inline-flex w-full md:w-auto rounded-xl border border-zinc-200 bg-white p-1 shadow-xs"
           >
             <button
               type="button"
@@ -981,8 +981,8 @@ export const YieldAndPestIntelligenceSection: React.FC<YieldAndPestIntelligenceS
               onClick={() => setActiveTab('yield')}
               className={`flex min-h-[44px] flex-1 md:flex-initial items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${
                 activeTab === 'yield'
-                  ? 'bg-emerald-900 text-white'
-                  : 'text-stone-700 hover:bg-stone-100'
+                  ? 'bg-[#2E7D32] text-white'
+                  : 'text-zinc-700 hover:bg-zinc-100'
               }`}
             >
               <TrendingUp className="h-4 w-4 shrink-0" />
@@ -996,8 +996,8 @@ export const YieldAndPestIntelligenceSection: React.FC<YieldAndPestIntelligenceS
               onClick={() => setActiveTab('radar')}
               className={`flex min-h-[44px] flex-1 md:flex-initial items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${
                 activeTab === 'radar'
-                  ? 'bg-emerald-900 text-white'
-                  : 'text-stone-700 hover:bg-stone-100'
+                  ? 'bg-[#2E7D32] text-white'
+                  : 'text-zinc-700 hover:bg-zinc-100'
               }`}
             >
               <Radar className="h-4 w-4 shrink-0" />
@@ -1263,7 +1263,7 @@ export const YieldAndPestIntelligenceSection: React.FC<YieldAndPestIntelligenceS
                     type="button"
                     onClick={handleRunYieldPrediction}
                     disabled={isPredictingYield}
-                    className="mt-5 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-800 disabled:opacity-60"
+                    className="mt-5 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-[#2E7D32] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#256628] disabled:opacity-60"
                   >
                     <Sparkles className="h-4 w-4 shrink-0" />
                     <span>{isPredictingYield ? c.predictingBtn : c.predictBtn}</span>
@@ -1646,7 +1646,7 @@ export const YieldAndPestIntelligenceSection: React.FC<YieldAndPestIntelligenceS
                     type="button"
                     onClick={handleRunPestRadar}
                     disabled={isRunningRadar}
-                    className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-800 disabled:opacity-60"
+                    className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-[#2E7D32] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#256628] disabled:opacity-60"
                   >
                     <Radar className="h-4 w-4 shrink-0" />
                     <span>{isRunningRadar ? c.runningRadarBtn : c.runRadarBtn}</span>
@@ -1735,7 +1735,7 @@ export const YieldAndPestIntelligenceSection: React.FC<YieldAndPestIntelligenceS
                 <button
                   type="submit"
                   disabled={isSubmittingReport}
-                  className="flex min-h-[42px] w-full items-center justify-center gap-2 rounded-lg border border-emerald-900 bg-white px-4 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-50 disabled:opacity-50"
+                  className="flex min-h-[42px] w-full items-center justify-center gap-2 rounded-lg border border-[#2E7D32] bg-white px-4 py-2 text-xs font-semibold text-[#2E7D32] hover:bg-[#EEF4EA] disabled:opacity-50"
                 >
                   <Upload className="h-4 w-4" />
                   <span>{isSubmittingReport ? c.submittingReportBtn : c.submitReportBtn}</span>

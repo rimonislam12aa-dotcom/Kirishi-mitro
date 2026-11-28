@@ -1,6 +1,8 @@
 export type AppLanguage = 'bn' | 'hi' | 'en';
 
-export type NavSection = 'weather' | 'calendar' | 'scanner' | 'yield-radar' | 'tips';
+export type BottomMainTab = 'home' | 'weather' | 'crops';
+
+export type NavSection = 'home' | 'weather' | 'calendar' | 'scanner' | 'yield-radar' | 'tips';
 
 export interface GeoLocationInfo {
   lat: number;

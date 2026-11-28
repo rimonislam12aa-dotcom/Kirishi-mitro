@@ -96,8 +96,8 @@ export const CropTipsSection: React.FC<CropTipsSectionProps> = ({
               onClick={() => setBookmarkedOnly((prev) => !prev)}
               className={`inline-flex min-h-[42px] items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                 bookmarkedOnly
-                  ? 'border-emerald-900 bg-emerald-900 text-white'
-                  : 'border-stone-300 bg-white text-stone-700 hover:bg-stone-50'
+                  ? 'border-[#2E7D32] bg-[#2E7D32] text-white'
+                  : 'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50'
               }`}
             >
               <Bookmark className="h-3.5 w-3.5" />
@@ -118,7 +118,7 @@ export const CropTipsSection: React.FC<CropTipsSectionProps> = ({
               return (
                 <article
                   key={tip.id}
-                  className="flex flex-col justify-between rounded-xl border border-stone-200 bg-[#F7F8F5] p-5"
+                  className="flex flex-col justify-between rounded-2xl border border-zinc-200 bg-[#F4F5F2] p-5"
                 >
                   <div>
                     {tip.imageUrl && (
@@ -184,7 +184,7 @@ export const CropTipsSection: React.FC<CropTipsSectionProps> = ({
                       <button
                         type="button"
                         onClick={() => handleListenTip(tip)}
-                        className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg bg-emerald-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 whitespace-nowrap shrink-0"
+                        className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg bg-[#2E7D32] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#256628] whitespace-nowrap shrink-0"
                       >
                         <Volume2 className="h-3.5 w-3.5" />
                         {t.tips.listenTip}
@@ -195,8 +195,8 @@ export const CropTipsSection: React.FC<CropTipsSectionProps> = ({
                         onClick={() => onToggleBookmark(tip.id)}
                         className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                           tip.bookmarked
-                            ? 'border-emerald-800 bg-emerald-50 text-emerald-950'
-                            : 'border-stone-300 bg-white text-stone-700 hover:bg-stone-50'
+                            ? 'border-[#2E7D32]/30 bg-[#EEF4EA] text-[#1E5622]'
+                            : 'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50'
                         }`}
                       >
                         <Bookmark className="h-3.5 w-3.5" />

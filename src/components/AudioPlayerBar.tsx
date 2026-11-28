@@ -37,11 +37,11 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({ t }) => {
   return (
     <aside
       aria-label={t.audio.playerTitle}
-      className="fixed bottom-[calc(4.35rem+env(safe-area-inset-bottom))] left-2.5 right-2.5 z-40 mx-auto max-w-2xl rounded-xl border border-stone-300 bg-stone-900 px-3.5 py-3 text-white shadow-xl sm:left-4 sm:right-4 sm:px-4 md:bottom-5"
+      className="fixed bottom-[calc(4.35rem+env(safe-area-inset-bottom))] left-2.5 right-2.5 z-40 mx-auto max-w-2xl rounded-2xl border border-zinc-300 bg-zinc-900 px-3.5 py-3 text-white shadow-xl sm:left-4 sm:right-4 sm:px-4 md:bottom-5"
     >
       <div className="flex items-center justify-between gap-2.5 sm:gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-800 text-emerald-100">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#2E7D32] text-lime-100">
             {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Volume2 className="h-5 w-5" />}
           </div>
 
